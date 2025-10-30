@@ -15,21 +15,13 @@ class FetchMoviesTMDB extends Command
     private $apiKey;
     private $baseUrl = 'https://api.themoviedb.org/3';
     private $imageBaseUrl = 'https://image.tmdb.org/t/p/';
-    private $rapidApiKey;
-    private $streamingApiBaseUrl = 'https://streaming-availability.p.rapidapi.com';
 
     public function handle()
     {
         $this->apiKey = env('TMDB_API_KEY');
-        $this->rapidApiKey = env('RAPIDAPI_KEY');
 
         if (!$this->apiKey) {
             $this->error('TMDB API key not found in environment variables');
-            return 1;
-        }
-
-        if (!$this->rapidApiKey) {
-            $this->error('RapidAPI key not found in environment variables');
             return 1;
         }
 
@@ -37,11 +29,11 @@ class FetchMoviesTMDB extends Command
         $this->info("Fetching movies from TMDB API...");
 
         // Fetch different categories
-        // $this->info("\n🎬 Fetching UPCOMING movies...");
-        // $this->fetchUpcoming($count);
+        $this->info("\n🎬 Fetching UPCOMING movies...");
+        $this->fetchUpcoming($count);
 
-        // $this->info("\n🎟️ Fetching NOW PLAYING (In Theaters) movies...");
-        // $this->fetchNowPlaying($count);
+        $this->info("\n🎟️ Fetching NOW PLAYING (In Theaters) movies...");
+        $this->fetchNowPlaying($count);
 
         $this->info("\n📦 Fetching POPULAR/RELEASED movies...");
         $this->fetchPopular($count);
@@ -116,7 +108,7 @@ class FetchMoviesTMDB extends Command
                                 }
                             }
 
-                            usleep(250000); // 250ms delay between requests
+                            usleep(100000); // 100ms delay between requests
                         }
                     }
                 }
@@ -160,119 +152,97 @@ class FetchMoviesTMDB extends Command
         return null;
     }
 
-    private function getWhereToWatch($movieTitle, $originalTitle = null, $releaseYear = null, $tmdbId = null)
+    private function getWhereToWatch($tmdbId)
     {
-        if (!$movieTitle) {
+        if (!$tmdbId) {
             return [];
         }
 
         try {
-            // Use Streaming Availability API via RapidAPI
-            // Endpoint: GET /shows/search/title
+            // Use TMDB Watch Providers API
             $response = Http::withOptions(['verify' => false])
-                ->withHeaders([
-                    'X-RapidAPI-Key' => $this->rapidApiKey,
-                    'X-RapidAPI-Host' => 'streaming-availability.p.rapidapi.com'
-                ])
-                ->get("{$this->streamingApiBaseUrl}/shows/search/title", [
-                    'country' => 'br',
-                    'title' => $movieTitle,
-                    'show_type' => 'movie',
-                    'output_language' => 'en'
+                ->get("{$this->baseUrl}/movie/{$tmdbId}/watch/providers", [
+                    'api_key' => $this->apiKey
                 ]);
 
             if (!$response->successful()) {
-                $this->line("  No streaming data for: {$movieTitle}");
+                $this->line("  No watch providers data for TMDB ID: {$tmdbId}");
                 return [];
             }
 
-            $results = $response->json();
+            $data = $response->json();
             
-            if (!is_array($results) || count($results) === 0) {
-                $this->line("  No results found for: {$movieTitle}");
+            // Extract watch providers for Brazil (BR)
+            if (!isset($data['results']['BR'])) {
+                $this->line("  No BR watch providers for TMDB ID: {$tmdbId}");
                 return [];
             }
 
-            // Find the exact match by TMDB ID if available, otherwise use first result
-            $matchedMovie = null;
-            if ($tmdbId) {
-                foreach ($results as $result) {
-                    if (isset($result['tmdbId']) && $result['tmdbId'] === "movie/{$tmdbId}") {
-                        $matchedMovie = $result;
-                        break;
-                    }
-                }
-            }
-            
-            // If no TMDB match, try to match by release year
-            if (!$matchedMovie && $releaseYear) {
-                foreach ($results as $result) {
-                    if (isset($result['releaseYear']) && $result['releaseYear'] == $releaseYear) {
-                        $matchedMovie = $result;
-                        break;
-                    }
-                }
-            }
-            
-            // If still no match, use first result
-            if (!$matchedMovie) {
-                $matchedMovie = $results[0];
-            }
-
-            // Extract streaming options for Brazil
-            if (!isset($matchedMovie['streamingOptions']) || !isset($matchedMovie['streamingOptions']['br'])) {
-                $this->line("  No BR streaming data for: {$movieTitle}");
-                return [];
-            }
-
+            $brProviders = $data['results']['BR'];
             $whereToWatch = [];
-            $brOptions = $matchedMovie['streamingOptions']['br'];
 
-            foreach ($brOptions as $option) {
-                $service = $option['service'] ?? [];
-                $type = $option['type'] ?? 'unknown';
-                
-                // Normalize type
-                if ($type === 'subscription') {
-                    $normalizedType = 'subscription';
-                } elseif ($type === 'rent') {
-                    $normalizedType = 'rent';
-                } elseif ($type === 'buy') {
-                    $normalizedType = 'buy';
-                } elseif ($type === 'free') {
-                    $normalizedType = 'free';
-                } elseif ($type === 'addon') {
-                    $normalizedType = 'subscription'; // Treat addon as subscription
-                } else {
-                    $normalizedType = $type;
+            // Process flatrate (subscription services)
+            if (isset($brProviders['flatrate']) && is_array($brProviders['flatrate'])) {
+                foreach ($brProviders['flatrate'] as $provider) {
+                    $whereToWatch[] = [
+                        'name' => $provider['provider_name'] ?? 'Unknown',
+                        'type' => 'subscription',
+                        'region' => 'BR',
+                        'web_url' => $brProviders['link'] ?? null,
+                        'format' => 'HD',
+                        'price' => null,
+                        'logo' => isset($provider['logo_path']) 
+                            ? $this->imageBaseUrl . 'original' . $provider['logo_path']
+                            : null,
+                        'display_priority' => $provider['display_priority'] ?? 999,
+                    ];
                 }
+            }
 
-                $price = null;
-                if (isset($option['price']['formatted'])) {
-                    $price = $option['price']['formatted'];
-                } elseif (isset($option['price']['amount']) && isset($option['price']['currency'])) {
-                    $price = $option['price']['amount'] . ' ' . $option['price']['currency'];
+            // Process rent
+            if (isset($brProviders['rent']) && is_array($brProviders['rent'])) {
+                foreach ($brProviders['rent'] as $provider) {
+                    $whereToWatch[] = [
+                        'name' => $provider['provider_name'] ?? 'Unknown',
+                        'type' => 'rent',
+                        'region' => 'BR',
+                        'web_url' => $brProviders['link'] ?? null,
+                        'format' => 'HD',
+                        'price' => null,
+                        'logo' => isset($provider['logo_path']) 
+                            ? $this->imageBaseUrl . 'original' . $provider['logo_path']
+                            : null,
+                        'display_priority' => $provider['display_priority'] ?? 999,
+                    ];
                 }
+            }
 
-                $whereToWatch[] = [
-                    'name' => $service['name'] ?? 'Unknown',
-                    'type' => $normalizedType,
-                    'region' => 'BR',
-                    'web_url' => $option['link'] ?? null,
-                    'format' => $option['quality'] ?? 'HD',
-                    'price' => $price,
-                    'logo' => $service['imageSet']['darkThemeImage'] ?? $service['imageSet']['lightThemeImage'] ?? null,
-                ];
+            // Process buy
+            if (isset($brProviders['buy']) && is_array($brProviders['buy'])) {
+                foreach ($brProviders['buy'] as $provider) {
+                    $whereToWatch[] = [
+                        'name' => $provider['provider_name'] ?? 'Unknown',
+                        'type' => 'buy',
+                        'region' => 'BR',
+                        'web_url' => $brProviders['link'] ?? null,
+                        'format' => 'HD',
+                        'price' => null,
+                        'logo' => isset($provider['logo_path']) 
+                            ? $this->imageBaseUrl . 'original' . $provider['logo_path']
+                            : null,
+                        'display_priority' => $provider['display_priority'] ?? 999,
+                    ];
+                }
             }
 
             if (count($whereToWatch) > 0) {
-                $this->info("  ✓ Found " . count($whereToWatch) . " streaming options for {$matchedMovie['title']} ({$matchedMovie['releaseYear']})");
+                $this->info("  ✓ Found " . count($whereToWatch) . " watch providers in Brazil");
             }
 
             return $whereToWatch;
 
         } catch (\Exception $e) {
-            $this->error("  ✗ Streaming API error: " . $e->getMessage());
+            $this->error("  ✗ Watch Providers API error: " . $e->getMessage());
             return [];
         }
     }
@@ -376,17 +346,13 @@ class FetchMoviesTMDB extends Command
             $releaseDate = $movieData['release_date'] ?? null;
             $status = $this->determineStatus($releaseDate, $defaultStatus);
 
-            // Get "Where to Watch" - only if not already populated
-            $whereToWatch = $movie->where_to_watch;
-            if (empty($whereToWatch)) {
-                $releaseYear = $releaseDate ? date('Y', strtotime($releaseDate)) : null;
-                $originalTitle = $movieData['original_title'] ?? null;
-                $tmdbId = $movieData['id'] ?? null;
-                $whereToWatch = $this->getWhereToWatch($movieData['title'], $originalTitle, $releaseYear, $tmdbId);
-            }
+            // Get "Where to Watch" using TMDB Watch Providers API
+            $tmdbId = $movieData['id'] ?? null;
+            $whereToWatch = $this->getWhereToWatch($tmdbId);
 
             // Update the movie
             $movie->update([
+                'tmdb_id' => $tmdbId,
                 'synopsis' => $movieData['overview'] ?? $movie->synopsis,
                 'release_date' => $releaseDate ?? $movie->release_date,
                 'status' => $status,
@@ -520,13 +486,12 @@ class FetchMoviesTMDB extends Command
             $releaseDate = $movieData['release_date'] ?? null;
             $status = $this->determineStatus($releaseDate, $defaultStatus);
 
-            // Get "Where to Watch" information from Watchmode API
-            $releaseYear = $releaseDate ? date('Y', strtotime($releaseDate)) : null;
-            $originalTitle = $movieData['original_title'] ?? null;
+            // Get "Where to Watch" using TMDB Watch Providers API
             $tmdbId = $movieData['id'] ?? null;
-            $whereToWatch = $this->getWhereToWatch($movieData['title'], $originalTitle, $releaseYear, $tmdbId);
+            $whereToWatch = $this->getWhereToWatch($tmdbId);
 
             $movie = Movie::create([
+                'tmdb_id' => $tmdbId,
                 'title' => $movieData['title'],
                 'slug' => Str::slug($movieData['title']),
                 'synopsis' => $movieData['overview'] ?? 'Sinopse não disponível',
@@ -543,7 +508,7 @@ class FetchMoviesTMDB extends Command
                 'cast' => $cast,
                 'crew' => $crew,
                 'videos' => $videos,
-'images' => $images,
+                'images' => $images,
                 'tmdb_rating' => $movieData['vote_average'] ?? null,
                 'tmdb_vote_count' => $movieData['vote_count'] ?? null,
                 'original_language' => $movieData['original_language'] ?? null,

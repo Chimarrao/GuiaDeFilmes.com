@@ -10,6 +10,7 @@ class Movie extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tmdb_id',
         'title',
         'slug',
         'synopsis',

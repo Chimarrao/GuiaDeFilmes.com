@@ -19,7 +19,22 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory('/cineradar/'),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // Se houver uma posição salva (voltar/avançar), use-a
+    if (savedPosition) {
+      return savedPosition
+    }
+    // Se houver uma âncora, role até ela
+    if (to.hash) {
+      return {
+        el: to.hash,
+        behavior: 'smooth'
+      }
+    }
+    // Caso contrário, role para o topo
+    return { top: 0, behavior: 'smooth' }
+  }
 })
 
 export default router

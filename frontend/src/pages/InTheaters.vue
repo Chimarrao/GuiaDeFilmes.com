@@ -33,8 +33,16 @@
           </div>
         </div>
 
+        <!-- Loading More -->
+        <div v-if="isLoadingMore" class="has-text-centered py-5">
+          <div class="spinner"></div>
+        </div>
+
+        <!-- Infinite Scroll Trigger -->
+        <div ref="loadMoreTrigger" class="load-more-trigger"></div>
+
         <!-- Empty State -->
-        <div v-else class="empty-state">
+        <div v-if="!movies || !movies.length" class="empty-state">
           <span class="icon">
             <i class="fas fa-film"></i>
           </span>
@@ -49,6 +57,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useMovieStore } from '../store/movie.js'
 import { useHead } from '../composables/useHead.js'
+import { useInfiniteScroll } from '../composables/useInfiniteScroll.js'
 import MovieCard from '../components/MovieCard.vue'
 
 export default {
@@ -57,6 +66,7 @@ export default {
   setup() {
     const store = useMovieStore()
     const loading = ref(true)
+    const isLoadingMore = ref(false)
 
     // SEO
     useHead({
@@ -90,7 +100,8 @@ export default {
     const loadMovies = async () => {
       try {
         loading.value = true
-        await store.fetchMovies('in-theaters')
+        store.resetMovies()
+        await store.fetchMovies('in-theaters', 1, false)
       } catch (error) {
         console.error('Erro ao carregar filmes:', error)
       } finally {
@@ -98,13 +109,34 @@ export default {
       }
     }
 
+    const loadMore = async () => {
+      if (isLoadingMore.value) return
+      if (store.pagination.currentPage >= store.pagination.lastPage) {
+        hasMore.value = false
+        return
+      }
+
+      try {
+        isLoadingMore.value = true
+        await store.fetchMovies('in-theaters', store.pagination.currentPage + 1, true)
+      } catch (error) {
+        console.error('Erro ao carregar mais filmes:', error)
+      } finally {
+        isLoadingMore.value = false
+      }
+    }
+
+    const { loadMoreTrigger, hasMore } = useInfiniteScroll(loadMore)
+
     onMounted(() => {
       loadMovies()
     })
 
     return {
       loading,
-      movies
+      movies,
+      loadMoreTrigger,
+      isLoadingMore
     }
   }
 }

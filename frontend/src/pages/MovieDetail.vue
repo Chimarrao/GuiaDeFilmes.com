@@ -239,7 +239,24 @@
                 <span>Elenco Principal</span>
               </span>
             </h3>
-            <div class="columns is-multiline">
+            <div v-if="isMobile" class="horizontal-scroll">
+              <div v-for="actor in movie.cast" :key="actor.id" class="horizontal-scroll-item cast-card">
+                <a :href="`https://www.themoviedb.org/person/${actor.id}`" target="_blank">
+                  <div class="card" style="background-color: var(--background-card);">
+                    <div class="card-image">
+                      <figure class="image is-square">
+                        <img :src="getActorPhoto(actor.profile_path)" :alt="actor.name">
+                      </figure>
+                    </div>
+                    <div class="card-content">
+                      <p class="has-text-white has-text-weight-bold">{{ actor.name }}</p>
+                      <p class="has-text-white-ter is-size-7">{{ actor.character }}</p>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            </div>
+            <div v-else class="columns is-multiline">
               <div v-for="actor in movie.cast" :key="actor.id" class="column is-one-fifth-desktop is-one-third-tablet is-half-mobile">
                 <a :href="`https://www.themoviedb.org/person/${actor.id}`" target="_blank" class="cast-card">
                   <div class="card" style="background-color: var(--background-card);">
@@ -268,12 +285,23 @@
                 <span>Equipe Técnica</span>
               </span>
             </h3>
-            <div class="columns is-multiline">
+            <div v-if="isMobile" class="horizontal-scroll">
+              <div v-for="member in movie.crew" :key="member.id + member.job" class="horizontal-scroll-item crew-card">
+                <a :href="`https://www.themoviedb.org/person/${member.id}`" target="_blank">
+                  <div class="box" style="background-color: var(--background-card); min-width: 200px;">
+                    <p class="has-text-white has-text-weight-bold">{{ member.name }}</p>
+                    <p class="has-text-danger">{{ translateCrewRole(member.job) }}</p>
+                    <p class="has-text-white-ter is-size-7">{{ member.department }}</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+            <div v-else class="columns is-multiline">
               <div v-for="member in movie.crew" :key="member.id + member.job" class="column is-one-quarter">
                 <a :href="`https://www.themoviedb.org/person/${member.id}`" target="_blank" class="crew-card">
                   <div class="box" style="background-color: var(--background-card);">
                     <p class="has-text-white has-text-weight-bold">{{ member.name }}</p>
-                    <p class="has-text-danger">{{ member.job }}</p>
+                    <p class="has-text-danger">{{ translateCrewRole(member.job) }}</p>
                     <p class="has-text-white-ter is-size-7">{{ member.department }}</p>
                   </div>
                 </a>
@@ -292,7 +320,25 @@
                   <span>{{ type }}</span>
                 </span>
               </h3>
-              <div class="columns is-multiline">
+              <div v-if="isMobile" class="horizontal-scroll">
+                <div v-for="video in videos" :key="video.key" class="horizontal-scroll-item video-card">
+                  <div class="box video-box" style="background-color: var(--background-card);">
+                    <div class="video-thumbnail" @click="openVideo(video.url)">
+                      <img :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
+                      <div class="play-overlay">
+                        <span class="icon is-large has-text-danger">
+                          <i class="fas fa-play-circle fa-3x"></i>
+                        </span>
+                      </div>
+                    </div>
+                    <p class="has-text-white mt-2">{{ video.name }}</p>
+                    <p class="has-text-white-ter is-size-7">
+                      {{ video.official ? '✓ Oficial' : '' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="columns is-multiline">
                 <div v-for="video in videos" :key="video.key" class="column is-one-third">
                   <div class="box video-box" style="background-color: var(--background-card);">
                     <div class="video-thumbnail" @click="openVideo(video.url)">
@@ -324,7 +370,14 @@
                   <span>Imagens de Fundo</span>
                 </span>
               </h3>
-              <div class="columns is-multiline">
+              <div v-if="isMobile" class="horizontal-scroll">
+                <div v-for="(image, index) in movie.images.backdrops.filter(img => img.url)" :key="'backdrop-' + index" class="horizontal-scroll-item image-card">
+                  <figure class="image is-16by9 photo-item" @click="openLightbox(image.url)">
+                    <img :src="image.url" :alt="`${movie.title} - Imagem ${index + 1}`">
+                  </figure>
+                </div>
+              </div>
+              <div v-else class="columns is-multiline">
                 <div v-for="(image, index) in movie.images.backdrops.filter(img => img.url)" :key="'backdrop-' + index" class="column is-one-third">
                   <figure class="image is-16by9 photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Imagem ${index + 1}`">
@@ -342,7 +395,14 @@
                   <span>Pôsteres</span>
                 </span>
               </h3>
-              <div class="columns is-multiline">
+              <div v-if="isMobile" class="horizontal-scroll">
+                <div v-for="(image, index) in movie.images.posters.filter(img => img.url)" :key="'poster-' + index" class="horizontal-scroll-item image-card">
+                  <figure class="image photo-item" @click="openLightbox(image.url)" style="width: 200px;">
+                    <img :src="image.url" :alt="`${movie.title} - Pôster ${index + 1}`">
+                  </figure>
+                </div>
+              </div>
+              <div v-else class="columns is-multiline">
                 <div v-for="(image, index) in movie.images.posters.filter(img => img.url)" :key="'poster-' + index" class="column is-one-quarter">
                   <figure class="image photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Pôster ${index + 1}`">
@@ -446,6 +506,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMovieStore } from '../store/movie.js'
 import { useHead } from '../composables/useHead.js'
+import { useIsMobile } from '../composables/useMediaQuery.js'
+import { translateCrewRole as translateRole, translateCountry } from '../utils/translations.js'
 import RatingBadge from '../components/RatingBadge.vue'
 
 export default {
@@ -461,6 +523,11 @@ export default {
     const movie = ref(null)
     const activeTab = ref('cast')
     const lightboxImage = ref(null)
+    const isMobile = useIsMobile()
+
+    const translateCrewRole = (role) => {
+      return translateRole(role)
+    }
 
     const loadMovie = async () => {
       try {
@@ -825,6 +892,8 @@ export default {
       movie,
       activeTab,
       lightboxImage,
+      isMobile,
+      translateCrewRole,
       formatDate,
       formatStatus,
       formatNumber,

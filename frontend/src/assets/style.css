@@ -21,6 +21,13 @@ body {
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   line-height: 1.6;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Ensure all images are responsive */
+img {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Global typography */
@@ -247,6 +254,20 @@ strong {
 
 /* Responsive Grid */
 @media (max-width: 768px) {
+  body {
+    padding: 0;
+  }
+
+  /* Prevent horizontal overflow */
+  #app {
+    overflow-x: hidden;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
   .hero .title {
     font-size: 2rem;
   }
@@ -265,6 +286,63 @@ strong {
 
   .section {
     padding: 2rem 1rem;
+  }
+
+  /* Mobile Movie Detail Optimizations */
+  .movie-detail-header {
+    min-height: 300px;
+  }
+
+  .movie-detail-content {
+    padding-top: 1.5rem;
+  }
+
+  .movie-poster-large {
+    max-width: 200px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .movie-meta {
+    font-size: 0.95rem;
+    gap: 1rem;
+  }
+
+  /* Horizontal Scroll Containers */
+  .horizontal-scroll {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 1rem;
+    padding: 1rem 0;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .horizontal-scroll::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  .horizontal-scroll-item {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  /* Cast/Crew Cards in Horizontal Scroll */
+  .horizontal-scroll .cast-card,
+  .horizontal-scroll .crew-card {
+    width: 120px;
+  }
+
+  /* Image Gallery in Horizontal Scroll */
+  .horizontal-scroll .image-card {
+    width: 280px;
+  }
+
+  /* Video Cards in Horizontal Scroll */
+  .horizontal-scroll .video-card {
+    width: 280px;
   }
 }
 

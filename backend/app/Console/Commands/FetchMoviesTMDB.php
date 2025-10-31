@@ -7,6 +7,9 @@ use App\Models\Movie;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Usando N8N
+ */
 class FetchMoviesTMDB extends Command
 {
     protected $signature = 'fetch:movies {--count=50 : Number of movies to fetch per category}';

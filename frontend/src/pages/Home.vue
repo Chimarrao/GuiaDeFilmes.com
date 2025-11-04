@@ -11,10 +11,10 @@
               </span>
             </span>
             <br>
-            Bem-vindo ao CineRadar
+            Bem-vindo ao Guia de Filmes
           </h1>
           <p class="subtitle">
-            Seu radar cinematográfico: Descubra, explore e acompanhe os melhores filmes com conteúdo gerado por IA
+            Seu radar cinematográfico: Descubra, explore e acompanhe os melhores filmes
           </p>
         </div>
       </div>
@@ -48,12 +48,12 @@
         </div>
 
         <div class="has-text-centered mt-5" v-if="inTheatersMovies.length">
-          <router-link to="/em-cartaz" class="button is-primary is-medium">
-            <span class="icon">
-              <i class="fas fa-arrow-right"></i>
-            </span>
-            <span>Ver Todos em Cartaz</span>
-          </router-link>
+          <Button 
+            label="Ver Todos em Cartaz" 
+            icon="pi pi-arrow-right" 
+            class="p-button-primary p-button-lg"
+            @click="$router.push('/em-cartaz')"
+          />
         </div>
       </section>
 
@@ -84,12 +84,12 @@
         </div>
 
         <div class="has-text-centered mt-5" v-if="upcomingMovies.length">
-          <router-link to="/estreias" class="button is-primary is-medium">
-            <span class="icon">
-              <i class="fas fa-arrow-right"></i>
-            </span>
-            <span>Ver Todas as Estreias</span>
-          </router-link>
+          <Button 
+            label="Ver Todas as Estreias" 
+            icon="pi pi-arrow-right" 
+            class="p-button-primary p-button-lg"
+            @click="$router.push('/estreias')"
+          />
         </div>
       </section>
 
@@ -120,12 +120,12 @@
         </div>
 
         <div class="has-text-centered mt-5" v-if="recentMovies.length">
-          <router-link to="/lancamentos" class="button is-primary is-medium">
-            <span class="icon">
-              <i class="fas fa-arrow-right"></i>
-            </span>
-            <span>Ver Todos os Lançamentos</span>
-          </router-link>
+          <Button 
+            label="Ver Todos os Lançamentos" 
+            icon="pi pi-arrow-right" 
+            class="p-button-primary p-button-lg"
+            @click="$router.push('/lancamentos')"
+          />
         </div>
       </section>
     </div>
@@ -150,16 +150,16 @@ export default {
 
     // SEO Meta Tags
     useHead({
-      title: 'CineRadar - Descubra os Melhores Filmes',
+      title: 'Guia de Filmes - Descubra os Melhores Filmes e Onde Assistir',
       meta: [
-        { name: 'description', content: 'CineRadar: Descubra filmes em cartaz, próximas estreias e lançamentos recentes. Catálogo completo com sinopses geradas por IA e informações detalhadas.' },
-        { property: 'og:title', content: 'CineRadar - Seu Radar Cinematográfico' },
-        { property: 'og:description', content: 'Explore o melhor do cinema: filmes em cartaz, estreias e lançamentos com conteúdo gerado por IA.' },
+        { name: 'description', content: 'Guia de Filmes: Descubra filmes em cartaz, próximas estreias, lançamentos e onde assistir online. Catálogo completo com informações detalhadas sobre os melhores filmes.' },
+        { property: 'og:title', content: 'Guia de Filmes - Seu Guia Completo de Cinema' },
+        { property: 'og:description', content: 'Explore o melhor do cinema: filmes em cartaz, estreias, lançamentos e onde assistir.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { property: 'og:image', content: '/og-image.jpg' },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'CineRadar - Descubra os Melhores Filmes' },
+        { name: 'twitter:title', content: 'Guia de Filmes - Descubra os Melhores Filmes' },
         { name: 'twitter:description', content: 'Explore filmes em cartaz, estreias e lançamentos recentes' }
       ],
       script: [
@@ -168,8 +168,8 @@ export default {
           innerHTML: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'WebSite',
-            name: 'CineRadar',
-            description: 'Catálogo de filmes com informações geradas por IA',
+            name: 'Guia de Filmes',
+            description: 'Catálogo completo de filmes com informações detalhadas e onde assistir',
             url: window.location.origin
           })
         }

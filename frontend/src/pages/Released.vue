@@ -28,7 +28,7 @@
     <section v-else class="section">
       <div class="container">
         <div v-if="movies && movies.length" class="columns is-multiline">
-          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
+          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -70,15 +70,15 @@ export default {
 
     // SEO
     useHead({
-      title: 'Lançamentos Recentes - CineRadar',
+      title: 'Lançamentos Recentes - Guia de Filmes',
       meta: [
         { name: 'description', content: 'Veja os filmes que acabaram de estrear nos cinemas. Fique por dentro dos lançamentos mais recentes e não perca nenhuma novidade.' },
-        { property: 'og:title', content: 'Lançamentos Recentes - CineRadar' },
+        { property: 'og:title', content: 'Lançamentos Recentes - Guia de Filmes' },
         { property: 'og:description', content: 'Filmes recém lançados nos cinemas' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'Lançamentos Recentes - CineRadar' },
+        { name: 'twitter:title', content: 'Lançamentos Recentes - Guia de Filmes' },
         { name: 'twitter:description', content: 'Confira os lançamentos mais recentes de filmes' }
       ],
       script: [

@@ -1,0 +1,438 @@
+<template>
+  <div class="country-movies">
+    <section class="hero is-dark">
+      <div class="hero-body">
+        <div class="container">
+          <h1 class="title is-1">
+            <span class="icon-text">
+              <span class="icon has-text-danger is-large">
+                <i class="fas fa-globe"></i>
+              </span>
+              <span>{{ getCountryTitle() }}</span>
+            </span>
+          </h1>
+          <p class="subtitle">{{ getCountryDescription() }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filtros Avançados -->
+    <section class="section">
+      <div class="container">
+        <div class="box" style="background-color: var(--background-card);">
+          <h2 class="title is-4 has-text-white mb-4">
+            <span class="icon-text">
+              <span class="icon has-text-danger">
+                <i class="fas fa-filter"></i>
+              </span>
+              <span>Filtros Avançados</span>
+            </span>
+          </h2>
+          
+          <div class="columns is-multiline">
+            <div class="column is-3">
+              <div class="field">
+                <label class="label has-text-white">Gênero</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select v-model="filters.genre">
+                      <option value="">Todos</option>
+                      <option value="acao">Ação</option>
+                      <option value="aventura">Aventura</option>
+                      <option value="comedia">Comédia</option>
+                      <option value="drama">Drama</option>
+                      <option value="terror">Terror</option>
+                      <option value="ficcao-cientifica">Ficção Científica</option>
+                      <option value="romance">Romance</option>
+                      <option value="suspense">Suspense</option>
+                      <option value="animacao">Animação</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-3">
+              <div class="field">
+                <label class="label has-text-white">Ano Inicial</label>
+                <div class="control">
+                  <input class="input" type="number" v-model="filters.yearFrom" placeholder="Ex: 2000" min="1900" :max="currentYear">
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-3">
+              <div class="field">
+                <label class="label has-text-white">Ano Final</label>
+                <div class="control">
+                  <input class="input" type="number" v-model="filters.yearTo" placeholder="Ex: 2024" min="1900" :max="currentYear">
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-3">
+              <div class="field">
+                <label class="label has-text-white">Nota Mínima</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select v-model="filters.minRating">
+                      <option value="">Todas</option>
+                      <option value="7">7+</option>
+                      <option value="8">8+</option>
+                      <option value="9">9+</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-12">
+              <div class="buttons">
+                <button class="button is-primary" @click="applyFilters">
+                  <span class="icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                  <span>Aplicar Filtros</span>
+                </button>
+                <button class="button is-light" @click="clearFilters">
+                  <span class="icon">
+                    <i class="fas fa-times"></i>
+                  </span>
+                  <span>Limpar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Movies Grid -->
+    <section class="section">
+      <div class="container">
+        <div v-if="loading" class="has-text-centered">
+          <div class="spinner"></div>
+        </div>
+
+        <div v-else-if="movies.length > 0">
+          <div class="columns is-multiline">
+            <div v-for="movie in movies" :key="movie.id" class="column is-one-fifth-desktop is-one-third-tablet is-half-mobile">
+              <MovieCard :movie="movie" />
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <nav v-if="pagination.lastPage > 1" class="pagination is-centered mt-6" role="navigation">
+            <button 
+              class="pagination-previous button is-dark" 
+              @click="loadPage(pagination.currentPage - 1)"
+              :disabled="pagination.currentPage === 1"
+            >
+              Anterior
+            </button>
+            <button 
+              class="pagination-next button is-dark" 
+              @click="loadPage(pagination.currentPage + 1)"
+              :disabled="pagination.currentPage === pagination.lastPage"
+            >
+              Próxima
+            </button>
+            <ul class="pagination-list">
+              <li v-for="page in getPageNumbers()" :key="page">
+                <button 
+                  v-if="page !== '...'"
+                  class="pagination-link button is-dark" 
+                  :class="{ 'is-current': page === pagination.currentPage }"
+                  @click="loadPage(page)"
+                >
+                  {{ page }}
+                </button>
+                <span v-else class="pagination-ellipsis">&hellip;</span>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+        <div v-else class="empty-state">
+          <span class="icon">
+            <i class="fas fa-film"></i>
+          </span>
+          <p>Nenhum filme encontrado</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script>
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useMovieStore } from '../store/movie.js'
+import { useHead } from '../composables/useHead.js'
+import MovieCard from '../components/MovieCard.vue'
+import axios from 'axios'
+
+export default {
+  name: 'CountryMovies',
+  components: {
+    MovieCard
+  },
+  setup() {
+    const route = useRoute()
+    const store = useMovieStore()
+    const loading = ref(true)
+    const movies = ref([])
+    const pagination = ref({
+      currentPage: 1,
+      lastPage: 1,
+      total: 0,
+      perPage: 20
+    })
+    const currentYear = new Date().getFullYear()
+    const filters = ref({
+      genre: '',
+      yearFrom: '',
+      yearTo: '',
+      minRating: ''
+    })
+
+    const countryMap = {
+      'brasil': { name: 'Brasil', original: 'Brazil', flag: '🇧🇷' },
+      'estados-unidos': { name: 'Estados Unidos', original: 'United States of America', flag: '🇺🇸' },
+      'reino-unido': { name: 'Reino Unido', original: 'United Kingdom', flag: '🇬🇧' },
+      'franca': { name: 'França', original: 'France', flag: '🇫🇷' },
+      'alemanha': { name: 'Alemanha', original: 'Germany', flag: '🇩🇪' },
+      'italia': { name: 'Itália', original: 'Italy', flag: '🇮🇹' },
+      'espanha': { name: 'Espanha', original: 'Spain', flag: '🇪🇸' },
+      'mexico': { name: 'México', original: 'Mexico', flag: '🇲🇽' },
+      'canada': { name: 'Canadá', original: 'Canada', flag: '🇨🇦' },
+      'japao': { name: 'Japão', original: 'Japan', flag: '🇯🇵' },
+      'coreia-do-sul': { name: 'Coreia do Sul', original: 'South Korea', flag: '🇰🇷' },
+      'china': { name: 'China', original: 'China', flag: '🇨🇳' }
+    }
+
+    const getCountryInfo = () => {
+      const country = route.params.country
+      return countryMap[country] || { name: country, original: country, flag: '🌍' }
+    }
+
+    const getCountryTitle = () => {
+      const info = getCountryInfo()
+      return `${info.flag} Filmes ${info.name}`
+    }
+
+    const getCountryDescription = () => {
+      const info = getCountryInfo()
+      return `Explore os melhores filmes de ${info.name}`
+    }
+
+    const loadMovies = async (page = 1) => {
+      try {
+        loading.value = true
+        const countryInfo = getCountryInfo()
+        
+        const params = {
+          page,
+          limit: 20,
+          country: countryInfo.original
+        }
+
+        // Adicionar filtros se existirem
+        if (filters.value.genre) params.genre = filters.value.genre
+        if (filters.value.yearFrom) params.yearFrom = filters.value.yearFrom
+        if (filters.value.yearTo) params.yearTo = filters.value.yearTo
+        if (filters.value.minRating) params.minRating = filters.value.minRating
+
+        const response = await axios.get('http://127.0.0.1:8000/api/movies/filter', { params })
+        
+        movies.value = response.data.data
+        pagination.value = {
+          currentPage: response.data.current_page,
+          lastPage: response.data.last_page,
+          total: response.data.total,
+          perPage: response.data.per_page
+        }
+      } catch (error) {
+        console.error('Erro ao carregar filmes:', error)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const loadPage = (page) => {
+      if (page >= 1 && page <= pagination.value.lastPage) {
+        loadMovies(page)
+      }
+    }
+
+    const getPageNumbers = () => {
+      const pages = []
+      const current = pagination.value.currentPage
+      const last = pagination.value.lastPage
+      
+      if (last <= 7) {
+        for (let i = 1; i <= last; i++) {
+          pages.push(i)
+        }
+      } else {
+        if (current <= 4) {
+          for (let i = 1; i <= 5; i++) pages.push(i)
+          pages.push('...')
+          pages.push(last)
+        } else if (current >= last - 3) {
+          pages.push(1)
+          pages.push('...')
+          for (let i = last - 4; i <= last; i++) pages.push(i)
+        } else {
+          pages.push(1)
+          pages.push('...')
+          for (let i = current - 1; i <= current + 1; i++) pages.push(i)
+          pages.push('...')
+          pages.push(last)
+        }
+      }
+      
+      return pages
+    }
+
+    const applyFilters = () => {
+      loadMovies(1)
+    }
+
+    const clearFilters = () => {
+      filters.value = {
+        genre: '',
+        yearFrom: '',
+        yearTo: '',
+        minRating: ''
+      }
+      loadMovies(1)
+    }
+
+    const updateMetaTags = () => {
+      const info = getCountryInfo()
+      useHead({
+        title: `${info.flag} Filmes ${info.name} - Guia de Filmes`,
+        meta: [
+          { name: 'description', content: `Descubra os melhores filmes de ${info.name}. Veja títulos populares, clássicos e lançamentos recentes do cinema ${info.name.toLowerCase()}.` },
+          { name: 'keywords', content: `filmes ${info.name.toLowerCase()}, cinema ${info.name.toLowerCase()}, filmes, ${info.name}` },
+          { property: 'og:title', content: `${info.flag} Filmes ${info.name} - Guia de Filmes` },
+          { property: 'og:description', content: `Descubra os melhores filmes de ${info.name}` }
+        ]
+      })
+    }
+
+    onMounted(() => {
+      updateMetaTags()
+      loadMovies()
+    })
+
+    watch(() => route.params.country, () => {
+      updateMetaTags()
+      clearFilters()
+    })
+
+    return {
+      loading,
+      movies,
+      pagination,
+      currentYear,
+      filters,
+      getCountryTitle,
+      getCountryDescription,
+      loadPage,
+      getPageNumbers,
+      applyFilters,
+      clearFilters
+    }
+  }
+}
+</script>
+
+<style scoped>
+.country-movies {
+  min-height: 100vh;
+}
+
+.hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(229, 9, 20, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.1) 0%, transparent 50%);
+}
+
+.hero-body {
+  position: relative;
+  z-index: 1;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+}
+
+.empty-state .icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+}
+
+.empty-state p {
+  font-size: 1.5rem;
+}
+
+.spinner {
+  border: 4px solid rgba(229, 9, 20, 0.1);
+  border-left-color: #e50914;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 2rem auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.pagination-link.is-current {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.select select {
+  background-color: var(--background-dark);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.select select:hover {
+  border-color: var(--primary-color);
+}
+
+.input {
+  background-color: var(--background-dark);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.input:hover, .input:focus {
+  border-color: var(--primary-color);
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+</style>

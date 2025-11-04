@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://codebr.net/cineradar/api'
+  baseURL: 'http://127.0.0.1:8000/api'
 })
 
 export const useMovieStore = defineStore('movie', {
@@ -39,8 +39,16 @@ export const useMovieStore = defineStore('movie', {
       return response.data
     },
     async fetchMovie(slug) {
-      const response = await api.get(`/movie/${slug}`)
-      this.currentMovie = response.data
+      console.log('Store fetchMovie chamado com slug:', slug)
+      try {
+        const response = await api.get(`/movie/${slug}`)
+        console.log('API response:', response.data)
+        this.currentMovie = response.data
+        console.log('currentMovie definido:', this.currentMovie)
+      } catch (error) {
+        console.error('Erro no store fetchMovie:', error)
+        this.currentMovie = null
+      }
     },
     resetMovies() {
       this.movies = []

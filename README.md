@@ -20,6 +20,13 @@ Sistema completo de catálogo de filmes com geração de conteúdo por IA, otimi
 ### Frontend
 - Node.js 18+ e npm
 
+### Python (para funcionalidades de streaming)
+- Python 3.8+
+- Bibliotecas: `simplejustwatchapi`
+  ```bash
+  pip install simplejustwatchapi
+  ```
+
 ---
 
 ## 🛠️ Instalação Local

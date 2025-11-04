@@ -9,11 +9,11 @@
               <span class="icon has-text-danger">
                 <i class="fas fa-info-circle"></i>
               </span>
-              <span>Sobre o CineRadar</span>
+              <span>Sobre o Guia de Filmes</span>
             </span>
           </p>
           <p class="subtitle is-4 has-text-white-ter">
-            Seu radar cinematográfico completo
+            Seu guia completo de cinema
           </p>
         </div>
       </div>
@@ -34,7 +34,7 @@
           </h2>
           <div class="content has-text-white-ter is-size-5">
             <p>
-              O <strong class="has-text-danger">CineRadar</strong> é sua plataforma completa para descobrir os melhores filmes! 🎬
+              O <strong class="has-text-danger">Guia de Filmes</strong> é sua plataforma completa para descobrir os melhores filmes! 🎬
             </p>
             <p>
               Aqui você encontra tudo que precisa para se manter atualizado sobre o mundo do cinema:
@@ -43,6 +43,7 @@
               <li>📽️ <strong>Próximas Estreias</strong> - Fique por dentro dos filmes que estão chegando aos cinemas</li>
               <li>🎟️ <strong>Em Cartaz</strong> - Veja quais filmes estão passando agora nos cinemas</li>
               <li>🍿 <strong>Lançamentos Recentes</strong> - Descubra os filmes que acabaram de estrear</li>
+              <li>📺 <strong>Onde Assistir</strong> - Saiba em quais plataformas de streaming cada filme está disponível</li>
               <li>⭐ <strong>Avaliações e Críticas</strong> - Confira as opiniões sobre cada filme</li>
               <li>🎥 <strong>Trailers</strong> - Assista aos trailers oficiais direto no site</li>
               <li>👥 <strong>Elenco e Equipe</strong> - Conheça os atores e diretores dos seus filmes favoritos</li>
@@ -61,7 +62,7 @@
               <span class="icon has-text-danger">
                 <i class="fas fa-star"></i>
               </span>
-              <span>Por que escolher o CineRadar?</span>
+              <span>Por que escolher o Guia de Filmes?</span>
             </span>
           </h2>
           
@@ -139,7 +140,7 @@
             </span>
           </h2>
           <p class="has-text-centered has-text-white-ter is-size-5">
-            O CineRadar foi criado por quem ama cinema, para quem ama cinema. 
+            O Guia de Filmes foi criado por quem ama cinema, para quem ama cinema. 
             Nossa missão é proporcionar a melhor experiência de descoberta de filmes na web brasileira!
           </p>
           <div class="has-text-centered mt-5">
@@ -165,15 +166,15 @@ export default {
   setup() {
     // SEO
     useHead({
-      title: 'Sobre - CineRadar',
+      title: 'Sobre - Guia de Filmes',
       meta: [
-        { name: 'description', content: 'Conheça o CineRadar, sua plataforma completa para descobrir filmes. Saiba mais sobre as tecnologias utilizadas e funcionalidades oferecidas.' },
-        { property: 'og:title', content: 'Sobre o CineRadar' },
-        { property: 'og:description', content: 'Plataforma moderna para descoberta de filmes com IA integrada' },
+        { name: 'description', content: 'Conheça o Guia de Filmes, sua plataforma completa para descobrir filmes, ver onde assistir e ficar por dentro das estreias. Saiba mais sobre as funcionalidades oferecidas.' },
+        { property: 'og:title', content: 'Sobre o Guia de Filmes' },
+        { property: 'og:description', content: 'Plataforma moderna para descoberta e exploração de filmes com informações sobre onde assistir' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { name: 'twitter:card', content: 'summary' },
-        { name: 'twitter:title', content: 'Sobre o CineRadar' },
+        { name: 'twitter:title', content: 'Sobre o Guia de Filmes' },
         { name: 'twitter:description', content: 'Conheça nossa plataforma de filmes' }
       ],
       script: [
@@ -182,8 +183,8 @@ export default {
           innerHTML: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'AboutPage',
-            name: 'Sobre o CineRadar',
-            description: 'Informações sobre o projeto CineRadar e suas tecnologias',
+            name: 'Sobre o Guia de Filmes',
+            description: 'Informações sobre o projeto Guia de Filmes',
             url: window.location.href
           })
         }

@@ -8,11 +8,11 @@
               <span class="icon has-text-danger">
                 <i class="fas fa-film"></i>
               </span>
-              <span>CineRadar</span>
+              <span>Guia de Filmes</span>
             </span>
           </h3>
           <p class="has-text-grey-light">
-            Seu radar cinematográfico. Descubra, explore e acompanhe os melhores filmes.
+            Seu guia completo de cinema. Descubra, explore e acompanhe os melhores filmes e onde assistir.
           </p>
         </div>
 
@@ -53,7 +53,7 @@
 
       <div class="content has-text-centered has-text-grey-light">
         <p>
-          <strong class="has-text-white">&copy; 2025 CineRadar</strong> - Todos os direitos reservados.
+          <strong class="has-text-white">&copy; 2025 Guia de Filmes</strong> - Todos os direitos reservados.
           <br>
           Dados fornecidos por <a href="https://www.themoviedb.org/" target="_blank" rel="noopener" class="has-text-danger">TMDB API</a>
         </p>

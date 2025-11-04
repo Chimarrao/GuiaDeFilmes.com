@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Http\Request;
+use App\Http\Controllers\JustWatchController;
 use App\Http\Controllers\MovieController;
-use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,5 +21,8 @@ Route::get('/movies/search', [MovieController::class, 'search']);
 Route::get('/movies/upcoming', [MovieController::class, 'upcoming']);
 Route::get('/movies/in-theaters', [MovieController::class, 'inTheaters']);
 Route::get('/movies/released', [MovieController::class, 'released']);
+Route::get('/movies/genre/{genre}', [MovieController::class, 'byGenre']);
+Route::get('/movies/decade/{decade}', [MovieController::class, 'byDecade']);
+Route::get('/movies/filter', [MovieController::class, 'filter']);
 Route::get('/movie/{slug}', [MovieController::class, 'show']);
-Route::get('/movie/{slug}/reviews', [ReviewController::class, 'index']);
+Route::get('/justwatch/search', [JustWatchController::class, 'search']);

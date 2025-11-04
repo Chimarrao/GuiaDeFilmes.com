@@ -1,0 +1,21 @@
+{
+  "name": "Guia de Filmes",
+  "short_name": "Guia de Filmes",
+  "description": "Descubra os melhores filmes em cartaz, próximas estreias e lançamentos recentes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#e50914",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

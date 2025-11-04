@@ -8,7 +8,7 @@
     <!-- Movie Content -->
     <div v-else-if="movie">
       <!-- Hero Header with Backdrop -->
-      <div class="movie-detail-header" :style="{ backgroundImage: getBackdropUrl() }">
+      <div class="movie-detail-header" :style="{ backgroundImage: movie ? getBackdropUrl() : 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)' }">
         <div class="movie-detail-overlay"></div>
         <div class="container movie-detail-content">
           <div class="columns">
@@ -16,8 +16,8 @@
               <figure class="image">
                 <img 
                   class="movie-poster-large" 
-                  :src="getPosterUrl()" 
-                  :alt="movie.title"
+                  :src="movie ? getPosterUrl() : 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'" 
+                  :alt="movie ? movie.title : 'Carregando...'"
                 />
               </figure>
             </div>
@@ -66,7 +66,7 @@
 
               <div class="content has-text-white-ter">
                 <h2 class="title is-4 has-text-white">Sinopse</h2>
-                <p class="is-size-5">{{ getSynopsis() }}</p>
+                <p class="is-size-5">{{ movie ? getSynopsis() : 'Carregando sinopse...' }}</p>
               </div>
             </div>
           </div>
@@ -84,16 +84,16 @@
                 <span class="icon has-text-danger">
                   <i class="fas fa-calendar-check"></i>
                 </span>
-                <span>{{ getReleaseBlockTitle() }}</span>
+                <span>{{ movie ? getReleaseBlockTitle() : 'Carregando...' }}</span>
               </span>
             </h2>
             <div class="content has-text-white-ter is-size-5">
               <p>
-                <strong class="has-text-danger">{{ movie.title }}</strong> {{ getReleaseDateText() }} 
+                <strong class="has-text-danger">{{ movie.title }}</strong> {{ movie ? getReleaseDateText() : '' }}
                 <strong class="has-text-white">{{ formatDate(movie.release_date) }}</strong>{{ getYearContext() }}.
               </p>
-              <p>{{ getReleaseContext() }}</p>
-              <p>{{ getAvailabilityText() }}</p>
+              <p>{{ movie ? getReleaseContext() : '' }}</p>
+              <p>{{ movie ? getAvailabilityText() : '' }}</p>
             </div>
           </div>
 
@@ -110,7 +110,7 @@
             <div class="content has-text-white-ter is-size-5">
               
               <!-- Where to Watch - Dynamic from Watchmode API -->
-              <div v-if="movie.where_to_watch && movie.where_to_watch.length > 0" class="mt-4">
+              <div v-if="getWatchData() && getWatchData().length > 0" class="mt-4">
                 
                 <!-- Subscription Platforms -->
                 <div v-if="subscriptionPlatforms.length > 0" class="mb-5">
@@ -126,7 +126,7 @@
                     <a 
                       v-for="(platform, index) in subscriptionPlatforms" 
                       :key="`sub-${index}`"
-                      :href="platform.web_url" 
+                      :href="getStreamingUrl(platform)" 
                       target="_blank"
                       class="streaming-item"
                       :title="`Assistir em ${platform.name} - ${platform.format}`"
@@ -157,7 +157,7 @@
                     <a 
                       v-for="(platform, index) in rentBuyPlatforms" 
                       :key="`rent-${index}`"
-                      :href="platform.web_url" 
+                      :href="getStreamingUrl(platform)" 
                       target="_blank"
                       class="streaming-item"
                       :title="`${platform.name} - ${platform.format}${platform.price ? ` - ${platform.price}` : ''}`"
@@ -191,7 +191,7 @@
                     <a 
                       v-for="(platform, index) in freePlatforms" 
                       :key="`free-${index}`"
-                      :href="platform.web_url" 
+                      :href="getStreamingUrl(platform)" 
                       target="_blank"
                       class="streaming-item"
                       :title="`Assistir grátis em ${platform.name} - ${platform.format}`"
@@ -209,7 +209,7 @@
                 </div>
 
                 <p class="mt-4 is-size-6 has-text-grey-light">
-                  <i class="fas fa-info-circle"></i>
+                  <i class="fas fa-info-circle has-text-white"></i>
                   <em> Disponibilidade verificada para Brasil. Clique nos logos para acessar as plataformas.</em>
                 </p>
               </div>
@@ -217,12 +217,12 @@
               <!-- No data available -->
               <div v-else class="mt-4">
                 <div class="notification is-dark">
-                  <p class="has-text-centered">
-                    <i class="fas fa-exclamation-circle mr-2"></i>
-                    Informações de disponibilidade não encontradas para este filme.
+                  <p class="has-text-centered has-text-white-ter">
+                    <i class="fas fa-info-circle mr-2 has-text-white"></i>
+                    Nenhuma plataforma de streaming disponível no momento para este filme no Brasil.
                   </p>
-                  <p class="has-text-centered is-size-7 mt-2">
-                    {{ getWhereToWatchText() }}
+                  <p class="has-text-centered is-size-7 mt-2 has-text-grey-light">
+                    Verifique novamente em breve ou consulte outras plataformas.
                   </p>
                 </div>
               </div>
@@ -361,24 +361,24 @@
 
           <!-- Photos Section -->
           <div v-if="hasPhotos()" class="mb-6">
-            <div v-if="movie.images && movie.images.backdrops && movie.images.backdrops.filter(img => img.url).length">
+            <div v-if="uniqueBackdrops.length">
               <h3 class="title is-3 has-text-white mb-4">
                 <span class="icon-text">
                   <span class="icon has-text-danger">
                     <i class="fas fa-images"></i>
                   </span>
-                  <span>Imagens de Fundo</span>
+                  <span>Galeria</span>
                 </span>
               </h3>
               <div v-if="isMobile" class="horizontal-scroll">
-                <div v-for="(image, index) in movie.images.backdrops.filter(img => img.url)" :key="'backdrop-' + index" class="horizontal-scroll-item image-card">
+                <div v-for="(image, index) in uniqueBackdrops" :key="'backdrop-' + index" class="horizontal-scroll-item image-card">
                   <figure class="image is-16by9 photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Imagem ${index + 1}`">
                   </figure>
                 </div>
               </div>
               <div v-else class="columns is-multiline">
-                <div v-for="(image, index) in movie.images.backdrops.filter(img => img.url)" :key="'backdrop-' + index" class="column is-one-third">
+                <div v-for="(image, index) in uniqueBackdrops" :key="'backdrop-' + index" class="column is-one-third">
                   <figure class="image is-16by9 photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Imagem ${index + 1}`">
                   </figure>
@@ -386,7 +386,7 @@
               </div>
             </div>
 
-            <div v-if="movie.images && movie.images.posters && movie.images.posters.filter(img => img.url).length" class="mt-5">
+            <div v-if="uniquePosters.length" class="mt-5">
               <h3 class="title is-3 has-text-white mb-4">
                 <span class="icon-text">
                   <span class="icon has-text-danger">
@@ -396,14 +396,14 @@
                 </span>
               </h3>
               <div v-if="isMobile" class="horizontal-scroll">
-                <div v-for="(image, index) in movie.images.posters.filter(img => img.url)" :key="'poster-' + index" class="horizontal-scroll-item image-card">
+                <div v-for="(image, index) in uniquePosters" :key="'poster-' + index" class="horizontal-scroll-item image-card">
                   <figure class="image photo-item" @click="openLightbox(image.url)" style="width: 200px;">
                     <img :src="image.url" :alt="`${movie.title} - Pôster ${index + 1}`">
                   </figure>
                 </div>
               </div>
               <div v-else class="columns is-multiline">
-                <div v-for="(image, index) in movie.images.posters.filter(img => img.url)" :key="'poster-' + index" class="column is-one-quarter">
+                <div v-for="(image, index) in uniquePosters" :key="'poster-' + index" class="column is-one-quarter">
                   <figure class="image photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Pôster ${index + 1}`">
                   </figure>
@@ -427,15 +427,15 @@
                 <tbody>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Nacionalidade</td>
-                    <td class="has-text-white-ter">{{ getCountries() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getCountries() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Distribuidor</td>
-                    <td class="has-text-white-ter">{{ getDistributors() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getDistributors() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Ano de produção</td>
-                    <td class="has-text-white-ter">{{ getYear() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getYear() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Tipo de filme</td>
@@ -443,15 +443,15 @@
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Orçamento</td>
-                    <td class="has-text-white-ter">{{ getBudget() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getBudget() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Receita</td>
-                    <td class="has-text-white-ter">{{ getRevenue() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getRevenue() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Idioma Original</td>
-                    <td class="has-text-white-ter">{{ getLanguage() }}</td>
+                    <td class="has-text-white-ter">{{ movie ? getLanguage() : '-' }}</td>
                   </tr>
                   <tr>
                     <td class="has-text-white has-text-weight-bold">Duração</td>
@@ -502,12 +502,13 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMovieStore } from '../store/movie.js'
 import { useHead } from '../composables/useHead.js'
 import { useIsMobile } from '../composables/useMediaQuery.js'
-import { translateCrewRole as translateRole, translateCountry } from '../utils/translations.js'
+import { translateCrewRole as translateRole, translateCountry, getCountryName, getCountryFlag } from '../utils/translations.js'
+import { getPlatformUrl } from '../utils/platformUrls.js'
 import RatingBadge from '../components/RatingBadge.vue'
 
 export default {
@@ -525,8 +526,70 @@ export default {
     const lightboxImage = ref(null)
     const isMobile = useIsMobile()
 
+    const getCountryFlagUrl = (country) => {
+      const flagUrls = {
+        'United States of America': 'https://flagcdn.com/w40/us.png',
+        'United Kingdom': 'https://flagcdn.com/w40/gb.png',
+        'Brazil': 'https://flagcdn.com/w40/br.png',
+        'France': 'https://flagcdn.com/w40/fr.png',
+        'Germany': 'https://flagcdn.com/w40/de.png',
+        'Italy': 'https://flagcdn.com/w40/it.png',
+        'Spain': 'https://flagcdn.com/w40/es.png',
+        'Mexico': 'https://flagcdn.com/w40/mx.png',
+        'Canada': 'https://flagcdn.com/w40/ca.png',
+        'Japan': 'https://flagcdn.com/w40/jp.png',
+        'South Korea': 'https://flagcdn.com/w40/kr.png',
+        'China': 'https://flagcdn.com/w40/cn.png',
+        'India': 'https://flagcdn.com/w40/in.png',
+        'Australia': 'https://flagcdn.com/w40/au.png',
+        'New Zealand': 'https://flagcdn.com/w40/nz.png',
+        'Argentina': 'https://flagcdn.com/w40/ar.png',
+        'Russia': 'https://flagcdn.com/w40/ru.png',
+        'Sweden': 'https://flagcdn.com/w40/se.png',
+        'Norway': 'https://flagcdn.com/w40/no.png',
+        'Denmark': 'https://flagcdn.com/w40/dk.png',
+        'Finland': 'https://flagcdn.com/w40/fi.png',
+        'Netherlands': 'https://flagcdn.com/w40/nl.png',
+        'Belgium': 'https://flagcdn.com/w40/be.png',
+        'Switzerland': 'https://flagcdn.com/w40/ch.png',
+        'Austria': 'https://flagcdn.com/w40/at.png',
+        'Poland': 'https://flagcdn.com/w40/pl.png',
+        'Portugal': 'https://flagcdn.com/w40/pt.png',
+        'Ireland': 'https://flagcdn.com/w40/ie.png',
+        'Czech Republic': 'https://flagcdn.com/w40/cz.png',
+        'Hungary': 'https://flagcdn.com/w40/hu.png',
+        'Romania': 'https://flagcdn.com/w40/ro.png',
+        'Turkey': 'https://flagcdn.com/w40/tr.png',
+        'Greece': 'https://flagcdn.com/w40/gr.png',
+        'Thailand': 'https://flagcdn.com/w40/th.png',
+        'Indonesia': 'https://flagcdn.com/w40/id.png',
+        'Philippines': 'https://flagcdn.com/w40/ph.png',
+        'Vietnam': 'https://flagcdn.com/w40/vn.png',
+        'Hong Kong': 'https://flagcdn.com/w40/hk.png',
+        'Taiwan': 'https://flagcdn.com/w40/tw.png',
+        'Singapore': 'https://flagcdn.com/w40/sg.png',
+        'Malaysia': 'https://flagcdn.com/w40/my.png',
+        'Chile': 'https://flagcdn.com/w40/cl.png',
+        'Colombia': 'https://flagcdn.com/w40/co.png',
+        'Peru': 'https://flagcdn.com/w40/pe.png',
+        'Venezuela': 'https://flagcdn.com/w40/ve.png',
+        'Uruguay': 'https://flagcdn.com/w40/uy.png',
+        'South Africa': 'https://flagcdn.com/w40/za.png',
+        'Egypt': 'https://flagcdn.com/w40/eg.png',
+        'Israel': 'https://flagcdn.com/w40/il.png',
+        'Saudi Arabia': 'https://flagcdn.com/w40/sa.png',
+        'United Arab Emirates': 'https://flagcdn.com/w40/ae.png'
+      }
+      return flagUrls[country] || null
+    }
+
     const translateCrewRole = (role) => {
       return translateRole(role)
+    }
+
+    const getStreamingUrl = (platform) => {
+      if (!platform || !movie.value) return '#'
+      return getPlatformUrl(platform.name, movie.value.title, platform.web_url)
     }
 
     const loadMovie = async () => {
@@ -538,12 +601,12 @@ export default {
         if (movie.value) {
           // Debug sinopse
           if (movie.value.ai_content && movie.value.ai_content.ai_synopsis) {
-            console.log('sinopse: customizada')
           } else {
-            console.log('sinopse: original')
           }
           
-          updateMetaTags()
+          // Temporariamente desabilitado para debug
+          // updateMetaTags()
+        } else {
         }
       } catch (error) {
         console.error('Erro ao carregar filme:', error)
@@ -554,75 +617,82 @@ export default {
 
     const updateMetaTags = () => {
       const m = movie.value
-      if (!m) return
+      if (!m) {
+        return
+      }
 
-      const keywords = [
-        m.title,
-        `${m.title} data de lançamento`,
-        `${m.title} elenco`,
-        `${m.title} atores`,
-        `${m.title} trailer`,
-        `${m.title} sinopse`,
-        `${m.title} onde assistir`,
-        ...(m.genres || [])
-      ].join(', ')
 
-      useHead({
-        title: `${m.title} (${getYear()}) - Data de Lançamento, Elenco e Trailer | CineRadar`,
-        meta: [
-          { name: 'description', content: `${m.title} estreia em ${formatDate(m.release_date)}. Veja elenco completo, trailer, sinopse e onde assistir. ${m.synopsis?.substring(0, 100) || ''}` },
-          { name: 'keywords', content: keywords },
-          { property: 'og:title', content: `${m.title} (${getYear()})` },
-          { property: 'og:description', content: m.synopsis?.substring(0, 200) || 'Veja detalhes completos' },
-          { property: 'og:type', content: 'video.movie' },
-          { property: 'og:url', content: window.location.href },
-          { property: 'og:image', content: getPosterUrl() },
-          { name: 'twitter:card', content: 'summary_large_image' },
-          { name: 'twitter:title', content: `${m.title} (${getYear()})` },
-          { name: 'twitter:description', content: m.synopsis?.substring(0, 200) || '' },
-          { name: 'twitter:image', content: getPosterUrl() }
-        ],
-        script: [
-          {
-            type: 'application/ld+json',
-            innerHTML: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Movie',
-              name: m.title,
-              description: m.synopsis || '',
-              image: getPosterUrl(),
-              datePublished: m.release_date,
-              genre: m.genres || [],
-              actor: (m.cast || []).map(actor => ({
-                '@type': 'Person',
-                name: actor.name,
-                url: `https://www.themoviedb.org/person/${actor.id}`
-              })),
-              director: (m.crew || []).filter(c => c.job === 'Director').map(director => ({
-                '@type': 'Person',
-                name: director.name
-              })),
-              aggregateRating: m.tmdb_rating ? {
-                '@type': 'AggregateRating',
-                ratingValue: m.tmdb_rating,
-                ratingCount: m.tmdb_vote_count
-              } : undefined,
-              duration: m.runtime ? `PT${m.runtime}M` : undefined
-            })
-          }
-        ]
-      })
+      try {
+        const keywords = [
+          m.title,
+          `${m.title} data de lançamento`,
+          `${m.title} elenco`,
+          `${m.title} atores`,
+          `${m.title} trailer`,
+          `${m.title} sinopse`,
+          `${m.title} onde assistir`,
+          ...(m.genres || [])
+        ].join(', ')
+
+        useHead({
+          title: `${m.title} (${getYear()}) - Data de Lançamento, Elenco e Trailer | Guia de Filmes`,
+          meta: [
+            { name: 'description', content: `${m.title} estreia em ${formatDate(m.release_date)}. Veja elenco completo, trailer, sinopse e onde assistir. ${m.synopsis?.substring(0, 100) || ''}` },
+            { name: 'keywords', content: keywords },
+            { property: 'og:title', content: `${m.title} (${getYear()})` },
+            { property: 'og:description', content: m.synopsis?.substring(0, 200) || 'Veja detalhes completos' },
+            { property: 'og:type', content: 'video.movie' },
+            { property: 'og:url', content: window.location.href },
+            { property: 'og:image', content: getPosterUrl() },
+            { name: 'twitter:card', content: 'summary_large_image' },
+            { name: 'twitter:title', content: `${m.title} (${getYear()})` },
+            { name: 'twitter:description', content: m.synopsis?.substring(0, 200) || '' },
+            { name: 'twitter:image', content: getPosterUrl() }
+          ],
+          script: [
+            {
+              type: 'application/ld+json',
+              innerHTML: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'Movie',
+                name: m.title,
+                description: m.synopsis || '',
+                image: getPosterUrl(),
+                datePublished: m.release_date,
+                genre: m.genres || [],
+                actor: (m.cast || []).map(actor => ({
+                  '@type': 'Person',
+                  name: actor.name,
+                  url: `https://www.themoviedb.org/person/${actor.id}`
+                })),
+                director: (m.crew || []).filter(c => c.job === 'Director').map(director => ({
+                  '@type': 'Person',
+                  name: director.name
+                })),
+                aggregateRating: m.tmdb_rating ? {
+                  '@type': 'AggregateRating',
+                  ratingValue: m.tmdb_rating,
+                  ratingCount: m.tmdb_vote_count
+                } : undefined,
+                duration: m.runtime ? `PT${m.runtime}M` : undefined
+              })
+            }
+          ]
+        })
+      } catch (error) {
+        console.error('Erro ao atualizar meta tags:', error)
+      }
     }
 
     const getSynopsis = () => {
-      // Prioriza sinopse da IA, senão usa a original
-      if (movie.value.ai_content && movie.value.ai_content.ai_synopsis) {
-        return movie.value.ai_content.ai_synopsis
-      }
-      return movie.value.synopsis || 'Sinopse não disponível'
+      return movie.value?.synopsis || 'Sinopse não disponível'
     }
 
     const getPosterUrl = () => {
+      if (!movie.value) {
+        return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
+      }
+      
       if (movie.value.poster_url) {
         return movie.value.poster_url
       }
@@ -631,6 +701,10 @@ export default {
     }
 
     const getBackdropUrl = () => {
+      if (!movie.value) {
+        return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)'
+      }
+      
       if (movie.value.images && movie.value.images.backdrops && movie.value.images.backdrops.length > 0) {
         return `url(${movie.value.images.backdrops[0].url})`
       }
@@ -640,7 +714,7 @@ export default {
       if (movie.value.poster_url) {
         return `url(${movie.value.poster_url})`
       }
-      return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=CINERADAR)'
+      return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)'
     }
 
     const getActorPhoto = (profilePath) => {
@@ -749,7 +823,12 @@ export default {
     const getCountries = () => {
       if (movie.value.production_countries && movie.value.production_countries.length > 0) {
         const filtered = movie.value.production_countries
-          .map(c => c.name)
+          .map(c => {
+            const countryName = getCountryName(c.name)
+            const flagUrl = getCountryFlagUrl(c.name)
+            // return flagUrl ? `<img src="${flagUrl}" alt="${countryName}" style="width: 20px; height: 15px; margin-right: 5px; border-radius: 2px;"> ${countryName}` : countryName
+            return countryName
+          })
           .filter(name => name && name.trim() !== '')
         return filtered.length > 0 ? filtered.join(', ') : '-'
       }
@@ -767,10 +846,12 @@ export default {
     }
 
     const getYear = () => {
-      if (movie.value.release_date) {
-        return new Date(movie.value.release_date).getFullYear()
+      if (!movie.value?.release_date) {
+        return '-'
       }
-      return '-'
+      
+      const year = new Date(movie.value.release_date).getFullYear()
+      return year
     }
 
     const formatCurrency = (value) => {
@@ -823,7 +904,9 @@ export default {
     }
 
     const groupedVideos = computed(() => {
-      if (!movie.value.videos) return {}
+      if (!movie.value?.videos) {
+        return {}
+      }
       
       const groups = {}
       const typeTranslation = {
@@ -845,20 +928,69 @@ export default {
       return groups
     })
 
+    const getWatchData = () => {
+      if (!movie.value) {
+        return null
+      }
+      
+      // Priorizar justwatch_watch_info se existir e tiver dados
+      if (movie.value.justwatch_watch_info && Array.isArray(movie.value.justwatch_watch_info) && movie.value.justwatch_watch_info.length > 0) {
+        return movie.value.justwatch_watch_info
+      }
+      
+      // Fallback para where_to_watch
+      if (movie.value.where_to_watch && Array.isArray(movie.value.where_to_watch) && movie.value.where_to_watch.length > 0) {
+        return movie.value.where_to_watch
+      }
+      
+      return null
+    }
+
     // Filter platforms by type
     const subscriptionPlatforms = computed(() => {
-      if (!movie.value || !movie.value.where_to_watch) return []
-      return movie.value.where_to_watch.filter(p => p.type === 'subscription')
+      const watchData = getWatchData()
+      if (!watchData) return []
+      return watchData.filter(p => p.type === 'FLATRATE' || p.type === 'subscription')
     })
 
     const rentBuyPlatforms = computed(() => {
-      if (!movie.value || !movie.value.where_to_watch) return []
-      return movie.value.where_to_watch.filter(p => p.type === 'rent' || p.type === 'buy')
+      const watchData = getWatchData()
+      if (!watchData) return []
+      return watchData.filter(p => p.type === 'RENT' || p.type === 'BUY' || p.type === 'rent' || p.type === 'buy')
     })
 
     const freePlatforms = computed(() => {
-      if (!movie.value || !movie.value.where_to_watch) return []
-      return movie.value.where_to_watch.filter(p => p.type === 'free')
+      const watchData = getWatchData()
+      if (!watchData) return []
+      return watchData.filter(p => p.type === 'ADS' || p.type === 'free')
+    })
+
+    const uniquePosters = computed(() => {
+      if (!movie.value?.images?.posters) {
+        return []
+      }
+      
+      const seenUrls = new Set()
+      return movie.value.images.posters.filter(img => {
+        if (!img.url) return false
+        if (seenUrls.has(img.url)) return false
+        seenUrls.add(img.url)
+        return true
+      })
+    })
+
+    const uniqueBackdrops = computed(() => {
+      if (!movie.value?.images?.backdrops) {
+        return []
+      }
+      
+      const seenUrls = new Set()
+      return movie.value.images.backdrops.filter(img => {
+        if (!img.url) return false
+        if (seenUrls.has(img.url)) return false
+        seenUrls.add(img.url)
+        return true
+      })
     })
 
     const handleImageError = (event) => {
@@ -880,11 +1012,24 @@ export default {
     }
 
     const goBack = () => {
-      router.go(-1)
+      // Check if there's history to go back to
+      if (window.history.length > 1) {
+        router.go(-1)
+      } else {
+        // Fallback to home page
+        router.push('/')
+      }
     }
 
     onMounted(() => {
       loadMovie()
+    })
+
+    // Watch for route changes
+    watch(() => route.params.slug, (newSlug, oldSlug) => {
+      if (newSlug && newSlug !== oldSlug) {
+        loadMovie()
+      }
     })
 
     return {
@@ -894,6 +1039,7 @@ export default {
       lightboxImage,
       isMobile,
       translateCrewRole,
+      getStreamingUrl,
       formatDate,
       formatStatus,
       formatNumber,
@@ -917,9 +1063,12 @@ export default {
       hasVideos,
       hasPhotos,
       groupedVideos,
+      getWatchData,
       subscriptionPlatforms,
       rentBuyPlatforms,
       freePlatforms,
+      uniquePosters,
+      uniqueBackdrops,
       handleImageError,
       openVideo,
       openLightbox,
@@ -1206,6 +1355,28 @@ export default {
   .rating-section {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* Lightbox/Modal Styles */
+.modal .modal-content {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+}
+
+.modal .modal-content .image img {
+  max-width: 100%;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+@media (min-width: 769px) {
+  .modal .modal-content {
+    max-width: 1200px;
   }
 }
 </style>

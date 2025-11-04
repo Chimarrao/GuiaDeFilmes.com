@@ -28,7 +28,7 @@
     <section v-else class="section">
       <div class="container">
         <div v-if="movies && movies.length" class="columns is-multiline">
-          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
+          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -70,15 +70,15 @@ export default {
 
     // SEO
     useHead({
-      title: 'Filmes em Cartaz - CineRadar',
+      title: 'Filmes em Cartaz - Guia de Filmes',
       meta: [
         { name: 'description', content: 'Descubra quais filmes estão em cartaz nos cinemas. Confira a lista completa de filmes disponíveis para assistir agora mesmo.' },
-        { property: 'og:title', content: 'Filmes em Cartaz - CineRadar' },
+        { property: 'og:title', content: 'Filmes em Cartaz - Guia de Filmes' },
         { property: 'og:description', content: 'Filmes disponíveis nos cinemas agora' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'Filmes em Cartaz - CineRadar' },
+        { name: 'twitter:title', content: 'Filmes em Cartaz - Guia de Filmes' },
         { name: 'twitter:description', content: 'Veja os filmes que estão passando nos cinemas' }
       ],
       script: [

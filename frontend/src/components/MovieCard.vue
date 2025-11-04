@@ -13,6 +13,16 @@
         <div class="rating-badge-container" v-if="movie.tmdb_rating">
           <RatingBadge :score="movie.tmdb_rating" />
         </div>
+        <div class="country-flags-container" v-if="shouldShowCountryFlags() && getCountryFlags().length">
+          <img 
+            v-for="(flag, index) in getCountryFlags()" 
+            :key="index"
+            :src="flag.url" 
+            :alt="flag.name" 
+            :title="flag.name"
+            class="country-flag-image" 
+          />
+        </div>
       </div>
       <div class="card-content">
         <h3 class="title is-6 has-text-white">{{ movie.title }}</h3>
@@ -37,7 +47,7 @@
             <span class="icon">
               <i class="fas fa-info-circle"></i>
             </span>
-            <span>Ver Detalhes</span>
+            <span class="has-text-white">Ver Detalhes</span>
           </span>
         </div>
       </div>
@@ -47,6 +57,7 @@
 
 <script>
 import RatingBadge from './RatingBadge.vue'
+import { getCountryCode, translateCountry } from '../utils/translations.js'
 
 export default {
   name: 'MovieCard',
@@ -71,6 +82,46 @@ export default {
       if (!date) return 'Data não disponível'
       const options = { year: 'numeric', month: 'long', day: 'numeric' }
       return new Date(date).toLocaleDateString('pt-BR', options)
+    },
+    shouldShowCountryFlags() {
+      if (!this.movie.production_countries || !this.movie.production_countries.length) {
+        return false
+      }
+      // Mostra bandeiras se tiver países que não sejam Estados Unidos
+      return this.movie.production_countries.some(country => {
+        const countryName = typeof country === 'string' ? country : country.name
+        return countryName && !countryName.toLowerCase().includes('united states')
+      })
+    },
+    getCountryFlags() {
+      if (!this.movie.production_countries || !this.movie.production_countries.length) {
+        return []
+      }
+      
+      const flags = []
+      const seenCodes = new Set()
+      
+      for (const country of this.movie.production_countries) {
+        const countryName = typeof country === 'string' ? country : country.name
+        
+        // Pula Estados Unidos
+        if (countryName && countryName.toLowerCase().includes('united states')) {
+          continue
+        }
+        
+        const code = getCountryCode(countryName)
+        
+        // Só adiciona se tiver código e não for duplicado
+        if (code && !seenCodes.has(code)) {
+          seenCodes.add(code)
+          flags.push({
+            name: translateCountry(countryName),
+            url: `https://flagcdn.com/w40/${code.toLowerCase()}.png`
+          })
+        }
+      }
+      
+      return flags
     }
   }
 }
@@ -122,6 +173,26 @@ export default {
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
 }
 
+.country-flags-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.country-flag-image {
+  width: 32px;
+  height: 24px;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.3);
+}
+
 .card-content {
   flex: 1;
   display: flex;
@@ -132,5 +203,13 @@ export default {
 .card-footer {
   margin-top: auto;
   padding-top: 1rem;
+}
+
+.card-footer .button {
+  font-weight: 600;
+}
+
+.card-footer .button span:not(.icon) {
+  color: #fff !important;
 }
 </style>

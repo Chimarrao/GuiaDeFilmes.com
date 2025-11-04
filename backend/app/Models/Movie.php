@@ -11,6 +11,7 @@ class Movie extends Model
 
     protected $fillable = [
         'tmdb_id',
+        'adult',
         'title',
         'slug',
         'synopsis',
@@ -26,6 +27,7 @@ class Movie extends Model
         'images',
         'tmdb_rating',
         'tmdb_vote_count',
+        'popularity',
         'original_language',
         'runtime',
         'budget',
@@ -34,9 +36,15 @@ class Movie extends Model
         'production_countries',
         'tagline',
         'where_to_watch',
+        'alternative_titles',
+        'external_ids',
+        'keywords',
+        'similar',
+        'justwatch_watch_info',
     ];
 
     protected $casts = [
+        'adult' => 'boolean',
         'genres' => 'array',
         'cast' => 'array',
         'crew' => 'array',
@@ -45,16 +53,36 @@ class Movie extends Model
         'production_companies' => 'array',
         'production_countries' => 'array',
         'where_to_watch' => 'array',
+        'alternative_titles' => 'array',
+        'external_ids' => 'array',
+        'keywords' => 'array',
+        'similar' => 'array',
         'release_date' => 'date',
     ];
 
-    public function reviews()
+    /**
+     * Set a given attribute on the model with proper JSON encoding
+     */
+    public function setAttribute($key, $value)
     {
-        return $this->hasMany(Review::class);
+        if (in_array($key, ['genres', 'cast', 'crew', 'videos', 'images', 'production_companies', 'production_countries', 'where_to_watch', 'alternative_titles', 'external_ids', 'keywords', 'similar'])) {
+            $this->attributes[$key] = is_array($value) 
+                ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) 
+                : $value;
+            return $this;
+        }
+
+        return parent::setAttribute($key, $value);
     }
 
-    public function aiContent()
-    {
-        return $this->hasOne(MovieAI::class);
-    }
+    // Relacionamentos comentados pois as tabelas foram removidas
+    // public function reviews()
+    // {
+    //     return $this->hasMany(Review::class);
+    // }
+
+    // public function aiContent()
+    // {
+    //     return $this->hasOne(MovieAI::class);
+    // }
 }

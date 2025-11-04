@@ -1,5 +1,5 @@
 <template>
-  <div class="rating-badge" :style="{ '--rating-color': ratingColor }">
+  <div v-if="shouldShow" class="rating-badge" :style="{ '--rating-color': ratingColor }">
     <svg class="rating-circle" viewBox="0 0 36 36">
       <!-- Background circle -->
       <path
@@ -32,9 +32,16 @@ export default {
       type: Number,
       required: true,
       validator: (value) => value >= 0 && value <= 10
+    },
+    showZero: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
+    shouldShow() {
+      return this.showZero || this.score > 0
+    },
     percentage() {
       return (this.score * 10).toFixed(0)
     },

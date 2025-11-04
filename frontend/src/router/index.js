@@ -6,6 +6,9 @@ import InTheaters from '../pages/InTheaters.vue'
 import Released from '../pages/Released.vue'
 import About from '../pages/About.vue'
 import Search from '../pages/Search.vue'
+import GenreMovies from '../pages/GenreMovies.vue'
+import YearMovies from '../pages/YearMovies.vue'
+import CountryMovies from '../pages/CountryMovies.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -14,11 +17,14 @@ const routes = [
   { path: '/em-cartaz', component: InTheaters },
   { path: '/lancamentos', component: Released },
   { path: '/sobre', component: About },
-  { path: '/buscar', component: Search }
+  { path: '/buscar', component: Search },
+  { path: '/explorar/genero/:genre', component: GenreMovies },
+  { path: '/explorar/ano/:decade', component: YearMovies },
+  { path: '/explorar/pais/:country', component: CountryMovies }
 ]
 
 const router = createRouter({
-  history: createWebHistory('/cineradar/'),
+  history: createWebHistory('/'),
   routes,
   scrollBehavior(to, from, savedPosition) {
     // Se houver uma posição salva (voltar/avançar), use-a

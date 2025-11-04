@@ -28,7 +28,7 @@
     <section v-else class="section">
       <div class="container">
         <div v-if="movies && movies.length" class="columns is-multiline">
-          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
+          <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -70,15 +70,15 @@ export default {
 
     // SEO
     useHead({
-      title: 'Próximas Estreias - CineRadar',
+      title: 'Próximas Estreias - Guia de Filmes',
       meta: [
         { name: 'description', content: 'Confira os próximos lançamentos de filmes nos cinemas. Fique por dentro das estreias mais aguardadas e planeje sua próxima sessão de cinema.' },
-        { property: 'og:title', content: 'Próximas Estreias - CineRadar' },
+        { property: 'og:title', content: 'Próximas Estreias - Guia de Filmes' },
         { property: 'og:description', content: 'Os filmes que estão chegando aos cinemas em breve' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'Próximas Estreias - CineRadar' },
+        { name: 'twitter:title', content: 'Próximas Estreias - Guia de Filmes' },
         { name: 'twitter:description', content: 'Fique por dentro das próximas estreias nos cinemas' }
       ],
       script: [

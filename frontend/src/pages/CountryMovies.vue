@@ -243,7 +243,7 @@ export default {
         if (filters.value.yearTo) params.yearTo = filters.value.yearTo
         if (filters.value.minRating) params.minRating = filters.value.minRating
 
-        const response = await axios.get('http://127.0.0.1:8000/api/movies/filter', { params })
+        const response = await axios.get('/api/movies/filter', { params })
         
         movies.value = response.data.data
         pagination.value = {

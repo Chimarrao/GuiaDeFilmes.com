@@ -16,30 +16,50 @@ class JustWatchController extends Controller
             return response()->json(['error' => 'Nenhum título informado'], 400);
         }
 
-        // Caminho para o script Python
+        // Caminho do script Python
         $scriptPath = base_path('scripts/justwatch.py');
 
-        // Comando para executar o Python
-        $command = "python \"$scriptPath\" \"$query\"";
+        // Detectar ambiente (Windows x Linux)
+        $isWindows = strtoupper(substr(PHP_OS_FAMILY, 0, 3)) === 'WIN';
+
+        if ($isWindows) {
+            // Ambiente local no Windows
+            $python = 'python'; // ou python3 dependendo da sua máquina
+        } else {
+            // Ambiente Linux (servidor)
+            $venvPython = base_path('venv/bin/python3');
+
+            // Se o venv existir, usa ele — senão usa python3 global
+            if (file_exists($venvPython)) {
+                $python = escapeshellcmd($venvPython);
+            } else {
+                $python = 'python3';
+            }
+        }
+
+        // Montar comando
+        $command = "$python \"$scriptPath\" \"$query\"";
         if ($imdbId) {
             $command .= " \"$imdbId\"";
         }
 
-        // Executar o comando
+        Log::info("Executando comando Python: " . $command);
+
+        // Rodar o comando e capturar saída
         $output = shell_exec($command);
 
         if ($output === null) {
             Log::error('Erro ao executar script Python: ' . $command);
-            return response()->json(['error' => 'Erro interno do servidor'], 500);
+            return response()->json(['error' => 'Erro interno ao chamar Python'], 500);
         }
 
-        // Limpar e decodificar JSON com suporte a UTF-8
+        // Decodificar JSON
         $output = trim($output);
         $data = json_decode($output, true, 512, JSON_UNESCAPED_UNICODE);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('Erro ao decodificar JSON do script Python: ' . json_last_error_msg() . ' | Output: ' . $output);
-            return response()->json(['error' => 'Erro ao processar resposta'], 500);
+            Log::error('Erro ao decodificar JSON: ' . json_last_error_msg() . ' | Output: ' . $output);
+            return response()->json(['error' => 'Erro ao interpretar resposta do Python'], 500);
         }
 
         return response()->json($data);

@@ -2,11 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-// Catch-all para Vue Router (excluindo /api)
 Route::get('/{any}', function () {
-    return view('welcome');
-})->where('any', '^(?!api).*$');
+    $indexPath = public_path('index.html');
+
+    if (File::exists($indexPath)) {
+        return File::get($indexPath);
+    }
+
+    abort(404, "index.html not found");
+})->where('any', '.*');

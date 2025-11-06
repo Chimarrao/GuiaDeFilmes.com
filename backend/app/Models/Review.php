@@ -11,9 +11,11 @@ class Review extends Model
 
     protected $fillable = [
         'movie_id',
-        'source',
-        'rating',
-        'comment',
+        'review_tmdb',
+    ];
+
+    protected $casts = [
+        'review_tmdb' => 'array',
     ];
 
     public function movie()

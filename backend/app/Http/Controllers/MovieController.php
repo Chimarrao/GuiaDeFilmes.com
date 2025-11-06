@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
+use App\Http\Resources\MovieListResource;
 use Illuminate\Http\Request;
 
 class MovieController extends Controller
@@ -15,7 +16,7 @@ class MovieController extends Controller
             $query->where('status', $request->status);
         }
 
-        return $query->paginate(20);
+        return MovieListResource::collection($query->paginate(20));
     }
 
     public function search(Request $request)
@@ -28,15 +29,23 @@ class MovieController extends Controller
 
         $limit = $request->input('limit', 20);
 
-        $movies = Movie::where(function($query) use ($searchTerm) {
-            // Search in title
+        // Normaliza o termo de busca - separa cada palavra
+        $searchWords = explode(' ', strtolower($searchTerm));
+
+        $movies = Movie::where(function($query) use ($searchTerm, $searchWords) {
+            // Busca pelo termo completo
             $query->where('title', 'like', "%{$searchTerm}%")
-                  // Search in synopsis
-                  ->orWhere('synopsis', 'like', "%{$searchTerm}%")
-                  // Search in original title
                   ->orWhere('original_title', 'like', "%{$searchTerm}%")
-                  // Search in tagline
+                  ->orWhere('synopsis', 'like', "%{$searchTerm}%")
                   ->orWhere('tagline', 'like', "%{$searchTerm}%");
+            
+            // Busca por cada palavra individualmente
+            foreach ($searchWords as $word) {
+                if (strlen($word) >= 3) { // Apenas palavras com 3+ caracteres
+                    $query->orWhere('title', 'like', "%{$word}%")
+                          ->orWhere('original_title', 'like', "%{$word}%");
+                }
+            }
         })
         // Also search in JSON fields (cast, crew, genres)
         ->orWhereRaw("LOWER(cast) LIKE ?", ['%' . strtolower($searchTerm) . '%'])
@@ -58,32 +67,70 @@ class MovieController extends Controller
         ])
         ->paginate($limit);
 
-        return $movies;
+        return MovieListResource::collection($movies);
     }
 
     public function show($slug)
     {
-        return Movie::where('slug', $slug)->firstOrFail();
+        // MovieDetail retorna tudo, incluindo reviews
+        $movie = Movie::with('reviews')->where('slug', $slug)->firstOrFail();
+        
+        // Processa as reviews para retornar os dados do JSON
+        if ($movie->reviews->isNotEmpty()) {
+            $allReviews = [];
+            foreach ($movie->reviews as $review) {
+                if (is_array($review->review_tmdb) && !empty($review->review_tmdb)) {
+                    $allReviews = array_merge($allReviews, $review->review_tmdb);
+                }
+            }
+            $movie->reviews_data = $allReviews;
+        } else {
+            $movie->reviews_data = [];
+        }
+        
+        return $movie;
     }
 
     public function upcoming(Request $request)
     {
         $limit = $request->input('limit', 20);
-        return Movie::where('status', 'upcoming')->paginate($limit);
+        
+        $movies = Movie::where('release_date', '>', now())
+            ->orderBy('release_date', 'asc')
+            ->orderBy('popularity', 'desc')
+            ->paginate($limit);
+            
+        return MovieListResource::collection($movies);
     }
 
     public function inTheaters(Request $request)
     {
         $limit = $request->input('limit', 20);
-        return Movie::where('status', 'in_theaters')->paginate($limit);
+        
+        $movies = Movie::whereBetween('release_date', [
+                now()->subDays(30),
+                now()
+            ])
+            ->orderBy('release_date', 'desc')
+            ->orderBy('popularity', 'desc')
+            ->paginate($limit);
+            
+        return MovieListResource::collection($movies);
     }
 
     public function released(Request $request)
     {
         $limit = $request->input('limit', 20);
-        return Movie::where('status', 'released')
+        
+        $movies = Movie::whereBetween('release_date', [
+                now()->subDays(30),
+                now()->subDays(7)
+            ])
             ->orderBy('release_date', 'desc')
+            ->orderBy('popularity', 'desc')
             ->paginate($limit);
+            
+        return MovieListResource::collection($movies);
     }
 
     public function byGenre($genre, Request $request)
@@ -114,9 +161,11 @@ class MovieController extends Controller
         
         $genreName = $genreMap[$genre] ?? $genre;
         
-        return Movie::whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%'])
+        $movies = Movie::whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%'])
             ->orderBy('popularity', 'desc')
             ->paginate($limit);
+            
+        return MovieListResource::collection($movies);
     }
 
     public function byDecade($decade, Request $request)
@@ -126,18 +175,22 @@ class MovieController extends Controller
         
         if ($startYear < 1960) {
             // Classics: before 1960
-            return Movie::whereNotNull('release_date')
+            $movies = Movie::whereNotNull('release_date')
                 ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) < ?", [1960])
                 ->orderBy('popularity', 'desc')
                 ->paginate($limit);
+                
+            return MovieListResource::collection($movies);
         }
         
         $endYear = $startYear + 9;
         
-        return Movie::whereNotNull('release_date')
+        $movies = Movie::whereNotNull('release_date')
             ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
             ->orderBy('popularity', 'desc')
             ->paginate($limit);
+            
+        return MovieListResource::collection($movies);
     }
 
     public function filter(Request $request)
@@ -182,7 +235,7 @@ class MovieController extends Controller
         
         // Rating filter
         if ($request->filled('minRating')) {
-            $query->where('rating', '>=', floatval($request->minRating));
+            $query->where('tmdb_rating', '>=', floatval($request->minRating));
         }
         
         // Country filter
@@ -218,6 +271,8 @@ class MovieController extends Controller
         }
         
         $limit = $request->input('limit', 20);
-        return $query->paginate($limit);
+        $movies = $query->paginate($limit);
+        
+        return MovieListResource::collection($movies);
     }
 }

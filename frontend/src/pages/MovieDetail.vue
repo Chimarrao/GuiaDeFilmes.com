@@ -55,9 +55,15 @@
               </div>
 
               <div class="genres mb-4" v-if="movie.genres && movie.genres.length">
-                <span v-for="genre in movie.genres" :key="genre" class="tag is-medium is-dark">
+                <router-link 
+                  v-for="genre in movie.genres" 
+                  :key="genre" 
+                  :to="getGenreLink(genre)"
+                  class="tag is-medium is-dark"
+                  style="text-decoration: none;"
+                >
                   {{ genre }}
-                </span>
+                </router-link>
               </div>
 
               <div v-if="movie.tagline" class="mb-4">
@@ -66,7 +72,7 @@
 
               <div class="content has-text-white-ter">
                 <h2 class="title is-4 has-text-white">Sinopse</h2>
-                <p class="is-size-5">{{ movie ? getSynopsis() : 'Carregando sinopse...' }}</p>
+                <p class="is-size-5" style="text-align: justify;">{{ movie ? getSynopsis() : 'Carregando sinopse...' }}</p>
               </div>
             </div>
           </div>
@@ -305,6 +311,63 @@
                     <p class="has-text-white-ter is-size-7">{{ member.department }}</p>
                   </div>
                 </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reviews -->
+          <div v-if="movie.reviews_data && movie.reviews_data.length" class="mb-6">
+            <h3 class="title is-3 has-text-white mb-4">
+              <span class="icon-text">
+                <span class="icon has-text-danger">
+                  <i class="fas fa-comments"></i>
+                </span>
+                <span>Avaliações</span>
+              </span>
+            </h3>
+            <div class="reviews-container">
+              <div v-for="review in movie.reviews_data" :key="review.id" class="box review-card mb-4" style="background-color: var(--background-card);">
+                <article class="media">
+                  <figure class="media-left">
+                    <p class="image is-64x64">
+                      <img 
+                        class="is-rounded" 
+                        :src="getReviewerAvatar(review.author_details)" 
+                        :alt="review.author"
+                      >
+                    </p>
+                  </figure>
+                  <div class="media-content">
+                    <div class="content">
+                      <div class="mb-2">
+                        <strong class="has-text-white">{{ review.author_details?.name || review.author }}</strong>
+                        <span v-if="review.author_details?.username" class="has-text-white-ter is-size-7 ml-2">
+                          @{{ review.author_details.username }}
+                        </span>
+                        <br>
+                        <span v-if="review.author_details?.rating" class="tag is-danger is-light mt-2">
+                          <span class="icon">
+                            <i class="fas fa-star"></i>
+                          </span>
+                          <span>{{ review.author_details.rating }}/10</span>
+                        </span>
+                        <small class="has-text-white-ter ml-2">{{ formatReviewDate(review.created_at) }}</small>
+                      </div>
+                      <div 
+                        class="has-text-white review-content" 
+                        :class="{ 'is-collapsed': !review.expanded && isReviewLong(review.content) }"
+                        v-html="formatReviewContent(review.content, review.expanded)"
+                      ></div>
+                      <button 
+                        v-if="isReviewLong(review.content)"
+                        @click="toggleReview(review)"
+                        class="button is-small is-text has-text-danger mt-2"
+                      >
+                        {{ review.expanded ? 'Ver menos' : 'Ver mais' }}
+                      </button>
+                    </div>
+                  </div>
+                </article>
               </div>
             </div>
           </div>
@@ -688,6 +751,31 @@ export default {
       return movie.value?.synopsis || 'Sinopse não disponível'
     }
 
+    const getGenreLink = (genre) => {
+      const genreMap = {
+        'Ação': 'acao',
+        'Aventura': 'aventura',
+        'Comédia': 'comedia',
+        'Drama': 'drama',
+        'Ficção científica': 'ficcao-cientifica',
+        'Terror': 'terror',
+        'Romance': 'romance',
+        'Suspense': 'suspense',
+        'Animação': 'animacao',
+        'Crime': 'crime',
+        'Documentário': 'documentario',
+        'Família': 'familia',
+        'Fantasia': 'fantasia',
+        'Guerra': 'guerra',
+        'História': 'historia',
+        'Mistério': 'misterio',
+        'Musical': 'musical',
+        'Western': 'western',
+      }
+      const slug = genreMap[genre] || genre.toLowerCase().replace(/\s+/g, '-')
+      return `/explorar/genero/${slug}`
+    }
+
     const getPosterUrl = () => {
       if (!movie.value) {
         return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
@@ -723,6 +811,58 @@ export default {
       }
       // Placeholder SVG melhor para atores
       return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="185" height="278" viewBox="0 0 185 278"%3E%3Crect width="185" height="278" fill="%231a1a1a"/%3E%3Ccircle cx="92.5" cy="80" r="35" fill="%23666"/%3E%3Cpath d="M30 190 Q30 140 92.5 140 Q155 140 155 190 L155 278 L30 278 Z" fill="%23666"/%3E%3Ctext x="92.5" y="250" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle"%3ESEM FOTO%3C/text%3E%3C/svg%3E'
+    }
+
+    const getReviewerAvatar = (authorDetails) => {
+      if (authorDetails?.avatar_path) {
+        // Se começar com /, é da TMDB - usar o padrão correto
+        if (authorDetails.avatar_path.startsWith('/')) {
+          return `https://media.themoviedb.org/t/p/w150_and_h150_face${authorDetails.avatar_path}`
+        }
+        // Se for URL do Gravatar
+        if (authorDetails.avatar_path.includes('gravatar')) {
+          return authorDetails.avatar_path.replace('/https:', 'https:')
+        }
+        return authorDetails.avatar_path
+      }
+      // Avatar padrão
+      return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" fill="%231a1a1a"/%3E%3Ccircle cx="32" cy="24" r="12" fill="%23666"/%3E%3Cpath d="M10 55 Q10 38 32 38 Q54 38 54 55 L54 64 L10 64 Z" fill="%23666"/%3E%3C/svg%3E'
+    }
+
+    const formatReviewDate = (dateString) => {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      const options = { year: 'numeric', month: 'long', day: 'numeric' }
+      return date.toLocaleDateString('pt-BR', options)
+    }
+
+    const isReviewLong = (content) => {
+      if (!content) return false
+      return content.length > 600
+    }
+
+    const toggleReview = (review) => {
+      review.expanded = !review.expanded
+    }
+
+    const formatReviewContent = (content, expanded = false) => {
+      if (!content) return ''
+      
+      let text = content
+      const maxLength = 600
+      
+      // Se não está expandido e o texto é longo, corta
+      if (!expanded && text.length > maxLength) {
+        text = text.substring(0, maxLength) + '...'
+      }
+      
+      // Converte quebras de linha em parágrafos
+      text = text.replace(/\r\n\r\n/g, '</p><p>')
+      text = text.replace(/\n\n/g, '</p><p>')
+      text = text.replace(/\r\n/g, '<br>')
+      text = text.replace(/\n/g, '<br>')
+      
+      return `<p>${text}</p>`
     }
 
     const formatNumber = (num) => {
@@ -1044,9 +1184,15 @@ export default {
       formatStatus,
       formatNumber,
       getSynopsis,
+      getGenreLink,
       getPosterUrl,
       getBackdropUrl,
       getActorPhoto,
+      getReviewerAvatar,
+      formatReviewDate,
+      formatReviewContent,
+      isReviewLong,
+      toggleReview,
       getReleaseDateText,
       getReleaseBlockTitle,
       getYearContext,
@@ -1183,6 +1329,46 @@ export default {
   object-fit: cover;
   width: 100%;
   height: 100%;
+}
+
+/* Reviews */
+.review-card {
+  border-left: 3px solid var(--danger);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.review-card:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.review-content {
+  line-height: 1.6;
+  transition: max-height 0.3s ease;
+}
+
+.review-content.is-collapsed {
+  max-height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.review-content.is-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--background-card));
+}
+
+.review-content p {
+  margin-bottom: 1em;
+}
+
+.reviews-container {
+  max-height: none;
 }
 
 .video-box {

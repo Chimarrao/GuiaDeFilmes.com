@@ -115,59 +115,64 @@
         </div>
 
         <div v-else-if="movies.length > 0">
-          <div class="columns is-multiline">
-            <div v-for="movie in movies" :key="movie.id" class="column is-one-fifth-desktop is-one-third-tablet is-half-mobile">
+          <div class="columns is-multiline is-mobile">
+            <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <MovieCard :movie="movie" />
             </div>
           </div>
 
-          <!-- Pagination -->
-          <nav v-if="pagination.lastPage > 1" class="pagination is-centered mt-6" role="navigation">
-            <button 
-              class="pagination-previous button is-dark" 
-              @click="loadPage(pagination.currentPage - 1)"
-              :disabled="pagination.currentPage === 1"
-            >
-              Anterior
-            </button>
-            <button 
-              class="pagination-next button is-dark" 
-              @click="loadPage(pagination.currentPage + 1)"
-              :disabled="pagination.currentPage === pagination.lastPage"
-            >
-              Próxima
-            </button>
-            <ul class="pagination-list">
-              <li v-for="page in getPageNumbers()" :key="page">
-                <button 
-                  v-if="page !== '...'"
-                  class="pagination-link button is-dark" 
-                  :class="{ 'is-current': page === pagination.currentPage }"
-                  @click="loadPage(page)"
-                >
-                  {{ page }}
-                </button>
-                <span v-else class="pagination-ellipsis">&hellip;</span>
-              </li>
-            </ul>
-          </nav>
+          <!-- Loading More -->
+          <div v-if="isLoadingMore" class="has-text-centered py-5">
+            <div class="spinner"></div>
+          </div>
         </div>
 
+        <!-- Empty State -->
         <div v-else class="empty-state">
           <span class="icon">
             <i class="fas fa-film"></i>
           </span>
           <p>Nenhum filme encontrado</p>
         </div>
+
+        <!-- Pagination (outside conditional blocks) -->
+        <nav v-if="!loading && totalPages > 1" class="pagination is-centered mt-6" role="navigation" aria-label="pagination">
+          <button 
+            class="pagination-previous" 
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            Anterior
+          </button>
+          <button 
+            class="pagination-next" 
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            Próxima
+          </button>
+          <ul class="pagination-list">
+            <li v-for="page in getPageNumbers()" :key="page">
+              <span v-if="page === '...'" class="pagination-ellipsis">&hellip;</span>
+              <button 
+                v-else
+                class="pagination-link" 
+                :class="{ 'is-current': page === currentPage }"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
     </section>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useMovieStore } from '../store/movie.js'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
 import axios from 'axios'
@@ -179,15 +184,11 @@ export default {
   },
   setup() {
     const route = useRoute()
-    const store = useMovieStore()
     const loading = ref(true)
+    const isLoadingMore = ref(false)
     const movies = ref([])
-    const pagination = ref({
-      currentPage: 1,
-      lastPage: 1,
-      total: 0,
-      perPage: 20
-    })
+    const currentPage = ref(1)
+    const totalPages = ref(1)
     const currentYear = new Date().getFullYear()
     const filters = ref({
       genre: '',
@@ -228,7 +229,12 @@ export default {
 
     const loadMovies = async (page = 1) => {
       try {
-        loading.value = true
+        if (page === 1) {
+          loading.value = true
+        } else {
+          isLoadingMore.value = true
+        }
+        
         const countryInfo = getCountryInfo()
         
         const params = {
@@ -246,49 +252,47 @@ export default {
         const response = await axios.get('/api/movies/filter', { params })
         
         movies.value = response.data.data
-        pagination.value = {
-          currentPage: response.data.current_page,
-          lastPage: response.data.last_page,
-          total: response.data.total,
-          perPage: response.data.per_page
-        }
+        currentPage.value = response.data.meta?.current_page || response.data.current_page || 1
+        totalPages.value = response.data.meta?.last_page || response.data.last_page || 1
       } catch (error) {
         console.error('Erro ao carregar filmes:', error)
       } finally {
         loading.value = false
+        isLoadingMore.value = false
       }
     }
 
-    const loadPage = (page) => {
-      if (page >= 1 && page <= pagination.value.lastPage) {
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
         loadMovies(page)
       }
     }
 
     const getPageNumbers = () => {
       const pages = []
-      const current = pagination.value.currentPage
-      const last = pagination.value.lastPage
+      const current = currentPage.value
+      const total = totalPages.value
       
-      if (last <= 7) {
-        for (let i = 1; i <= last; i++) {
+      if (total <= 7) {
+        for (let i = 1; i <= total; i++) {
           pages.push(i)
         }
       } else {
         if (current <= 4) {
           for (let i = 1; i <= 5; i++) pages.push(i)
           pages.push('...')
-          pages.push(last)
-        } else if (current >= last - 3) {
+          pages.push(total)
+        } else if (current >= total - 3) {
           pages.push(1)
           pages.push('...')
-          for (let i = last - 4; i <= last; i++) pages.push(i)
+          for (let i = total - 4; i <= total; i++) pages.push(i)
         } else {
           pages.push(1)
           pages.push('...')
           for (let i = current - 1; i <= current + 1; i++) pages.push(i)
           pages.push('...')
-          pages.push(last)
+          pages.push(total)
         }
       }
       
@@ -296,6 +300,7 @@ export default {
     }
 
     const applyFilters = () => {
+      currentPage.value = 1
       loadMovies(1)
     }
 
@@ -306,6 +311,7 @@ export default {
         yearTo: '',
         minRating: ''
       }
+      currentPage.value = 1
       loadMovies(1)
     }
 
@@ -329,21 +335,25 @@ export default {
 
     watch(() => route.params.country, () => {
       updateMetaTags()
+      currentPage.value = 1
+      movies.value = []
       clearFilters()
     })
 
     return {
       loading,
+      isLoadingMore,
       movies,
-      pagination,
+      currentPage,
+      totalPages,
       currentYear,
       filters,
       getCountryTitle,
       getCountryDescription,
-      loadPage,
-      getPageNumbers,
       applyFilters,
-      clearFilters
+      clearFilters,
+      goToPage,
+      getPageNumbers
     }
   }
 }
@@ -434,5 +444,49 @@ export default {
 
 .input::placeholder {
   color: rgba(255, 255, 255, 0.4);
+}
+
+/* Pagination Styles */
+.pagination {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+.pagination-previous,
+.pagination-next,
+.pagination-link {
+  background-color: #2b2b2b;
+  border-color: #404040;
+  color: #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.pagination-previous:hover:not(:disabled),
+.pagination-next:hover:not(:disabled),
+.pagination-link:hover:not(.is-current) {
+  background-color: #dc143c;
+  border-color: #dc143c;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.pagination-link.is-current {
+  background-color: #dc143c;
+  border-color: #dc143c;
+  color: #fff;
+  font-weight: 600;
+}
+
+.pagination-previous:disabled,
+.pagination-next:disabled {
+  background-color: #1a1a1a;
+  border-color: #2b2b2b;
+  color: #555;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination-ellipsis {
+  color: #888;
 }
 </style>

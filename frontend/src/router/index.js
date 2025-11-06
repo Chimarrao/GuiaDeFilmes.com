@@ -9,6 +9,7 @@ import Search from '../pages/Search.vue'
 import GenreMovies from '../pages/GenreMovies.vue'
 import YearMovies from '../pages/YearMovies.vue'
 import CountryMovies from '../pages/CountryMovies.vue'
+import Explore from '../pages/Explore.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -18,6 +19,7 @@ const routes = [
   { path: '/lancamentos', component: Released },
   { path: '/sobre', component: About },
   { path: '/buscar', component: Search },
+  { path: '/explorar', component: Explore },
   { path: '/explorar/genero/:genre', component: GenreMovies },
   { path: '/explorar/ano/:decade', component: YearMovies },
   { path: '/explorar/pais/:country', component: CountryMovies }

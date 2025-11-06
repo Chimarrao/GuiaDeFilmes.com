@@ -84,14 +84,7 @@ export default {
       return new Date(date).toLocaleDateString('pt-BR', options)
     },
     shouldShowCountryFlags() {
-      if (!this.movie.production_countries || !this.movie.production_countries.length) {
-        return false
-      }
-      // Mostra bandeiras se tiver países que não sejam Estados Unidos
-      return this.movie.production_countries.some(country => {
-        const countryName = typeof country === 'string' ? country : country.name
-        return countryName && !countryName.toLowerCase().includes('united states')
-      })
+      return this.movie.production_countries && this.movie.production_countries.length > 0
     },
     getCountryFlags() {
       if (!this.movie.production_countries || !this.movie.production_countries.length) {
@@ -104,8 +97,7 @@ export default {
       for (const country of this.movie.production_countries) {
         const countryName = typeof country === 'string' ? country : country.name
         
-        // Pula Estados Unidos
-        if (countryName && countryName.toLowerCase().includes('united states')) {
+        if (!countryName) {
           continue
         }
         

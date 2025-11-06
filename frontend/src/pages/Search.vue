@@ -218,8 +218,8 @@
             </template>
           </h2>
           
-          <div class="columns is-multiline">
-            <div v-for="movie in results" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
+          <div class="columns is-multiline is-mobile">
+            <div v-for="movie in results" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <MovieCard :movie="movie" />
             </div>
           </div>

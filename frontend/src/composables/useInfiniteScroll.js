@@ -3,12 +3,10 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 export function useInfiniteScroll(loadMoreCallback) {
   const observer = ref(null)
   const loadMoreTrigger = ref(null)
-  const isLoading = ref(false)
-  const hasMore = ref(true)
 
   const observerCallback = (entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting && !isLoading.value && hasMore.value) {
+      if (entry.isIntersecting) {
         loadMoreCallback()
       }
     })
@@ -26,7 +24,7 @@ export function useInfiniteScroll(loadMoreCallback) {
     // Create new observer
     observer.value = new IntersectionObserver(observerCallback, {
       root: null,
-      rootMargin: '100px',
+      rootMargin: '200px',
       threshold: 0.1
     })
 
@@ -60,8 +58,6 @@ export function useInfiniteScroll(loadMoreCallback) {
 
   return {
     loadMoreTrigger,
-    isLoading,
-    hasMore,
     setupObserver,
     disconnectObserver
   }

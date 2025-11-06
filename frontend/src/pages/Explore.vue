@@ -18,8 +18,8 @@
           <h2 class="title is-3 mb-4 has-text-white">
             <i class="fas fa-masks-theater"></i> Gêneros
           </h2>
-          <div class="columns is-multiline">
-            <div v-for="genre in genres" :key="genre.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
+          <div class="columns is-multiline is-mobile">
+            <div v-for="genre in genres" :key="genre.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <div class="genre-card" @click="$router.push(`/explorar/genero/${genre.slug}`)">
                 <Card class="explore-card">
                   <template #content>
@@ -41,8 +41,8 @@
           <h2 class="title is-3 mb-4 has-text-white">
             <i class="fas fa-calendar-alt"></i> Décadas
           </h2>
-          <div class="columns is-multiline">
-            <div v-for="decade in decades" :key="decade.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
+          <div class="columns is-multiline is-mobile">
+            <div v-for="decade in decades" :key="decade.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <div class="decade-card" @click="$router.push(`/explorar/decada/${decade.slug}`)">
                 <Card class="explore-card">
                   <template #content>
@@ -62,8 +62,8 @@
           <h2 class="title is-3 mb-4 has-text-white">
             <i class="fas fa-globe"></i> Nacionalidades
           </h2>
-          <div class="columns is-multiline">
-            <div v-for="country in countries" :key="country.code" class="column is-one-quarter-desktop is-one-third-tablet is-half">
+          <div class="columns is-multiline is-mobile">
+            <div v-for="country in countries" :key="country.code" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <router-link :to="`/explorar/pais/${country.code}`" class="country-card">
                 <div class="card">
                   <div class="card-content has-text-centered">

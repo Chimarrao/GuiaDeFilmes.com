@@ -158,8 +158,8 @@
             <span v-if="movies.length" class="tag is-danger is-medium ml-2">{{ totalResults }}</span>
           </h2>
 
-          <div v-if="movies && movies.length" class="columns is-multiline">
-            <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half">
+          <div v-if="movies && movies.length" class="columns is-multiline is-mobile">
+            <div v-for="movie in movies" :key="movie.id" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <MovieCard :movie="movie" />
             </div>
           </div>

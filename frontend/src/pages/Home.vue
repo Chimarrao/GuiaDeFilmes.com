@@ -34,8 +34,8 @@
           <div class="spinner"></div>
         </div>
 
-        <div v-else-if="inTheatersMovies.length" class="columns is-multiline">
-          <div v-for="movie in inTheatersMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet">
+        <div v-else-if="inTheatersMovies.length" class="columns is-multiline is-mobile">
+          <div v-for="movie in inTheatersMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet is-half-mobile">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -70,8 +70,8 @@
           <div class="spinner"></div>
         </div>
 
-        <div v-else-if="upcomingMovies.length" class="columns is-multiline">
-          <div v-for="movie in upcomingMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet">
+        <div v-else-if="upcomingMovies.length" class="columns is-multiline is-mobile">
+          <div v-for="movie in upcomingMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet is-half-mobile">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -106,8 +106,8 @@
           <div class="spinner"></div>
         </div>
 
-        <div v-else-if="recentMovies.length" class="columns is-multiline">
-          <div v-for="movie in recentMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet">
+        <div v-else-if="recentMovies.length" class="columns is-multiline is-mobile">
+          <div v-for="movie in recentMovies" :key="movie.id" class="column is-one-third-desktop is-half-tablet is-half-mobile">
             <MovieCard :movie="movie" />
           </div>
         </div>
@@ -157,10 +157,11 @@ export default {
         { property: 'og:description', content: 'Explore o melhor do cinema: filmes em cartaz, estreias, lançamentos e onde assistir.' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
-        { property: 'og:image', content: '/og-image.jpg' },
+        { property: 'og:image', content: 'https://guiadefilmes.com/og-image.jpg' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Guia de Filmes - Descubra os Melhores Filmes' },
-        { name: 'twitter:description', content: 'Explore filmes em cartaz, estreias e lançamentos recentes' }
+        { name: 'twitter:description', content: 'Explore filmes em cartaz, estreias e lançamentos recentes' },
+        { name: 'twitter:image', content: 'https://guiadefilmes.com/og-image.jpg' }
       ],
       script: [
         {

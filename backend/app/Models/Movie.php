@@ -75,14 +75,11 @@ class Movie extends Model
         return parent::setAttribute($key, $value);
     }
 
-    // Relacionamentos comentados pois as tabelas foram removidas
-    // public function reviews()
-    // {
-    //     return $this->hasMany(Review::class);
-    // }
-
-    // public function aiContent()
-    // {
-    //     return $this->hasOne(MovieAI::class);
-    // }
+    /**
+     * Get the reviews for the movie.
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'movie_id', 'tmdb_id');
+    }
 }

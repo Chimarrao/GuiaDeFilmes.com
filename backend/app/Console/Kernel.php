@@ -19,5 +19,6 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\FetchMoviesTMDB::class,
+        \App\Console\Commands\JustwatchBackfill::class,
     ];
 }

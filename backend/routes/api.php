@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use App\Http\Controllers\JustWatchController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\MovieOrderingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,3 +27,8 @@ Route::get('/movies/decade/{decade}', [MovieController::class, 'byDecade']);
 Route::get('/movies/filter', [MovieController::class, 'filter']);
 Route::get('/movie/{slug}', [MovieController::class, 'show']);
 Route::get('/justwatch/search', [JustWatchController::class, 'search']);
+
+// Movie Ordering routes
+Route::get('/movie-ordering/all', [MovieOrderingController::class, 'getAllOrderings']);
+Route::get('/movie-ordering/{type}', [MovieOrderingController::class, 'getOrdering']);
+Route::post('/movie-ordering/{type}', [MovieOrderingController::class, 'updateOrdering']);

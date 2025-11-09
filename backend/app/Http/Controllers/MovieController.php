@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
+use App\Models\MovieOrdering;
 use App\Http\Resources\MovieListResource;
 use Illuminate\Http\Request;
 
@@ -94,7 +95,53 @@ class MovieController extends Controller
     public function upcoming(Request $request)
     {
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
         
+        // Obter ordenação customizada
+        $ordering = MovieOrdering::first();
+        $customOrder = $ordering ? ($ordering->upcoming ?? []) : [];
+        
+        // Se tem ordenação customizada, usar ela primeiro
+        if (!empty($customOrder)) {
+            $tmdbIds = array_column($customOrder, 'id_tmdb');
+            
+            // Buscar os filmes da ordenação que existem no banco
+            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
+                ->get()
+                ->sortBy(function($movie) use ($tmdbIds) {
+                    return array_search($movie->tmdb_id, $tmdbIds);
+                })
+                ->values();
+            
+            // Buscar os demais filmes com filtro de data
+            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
+                ->where('release_date', '>', now())
+                ->orderBy('release_date', 'asc')
+                ->orderBy('popularity', 'desc')
+                ->get();
+            
+            // Combinar os dois grupos
+            $allMovies = $orderedMovies->concat($remainingMovies);
+            
+            // Paginar manualmente
+            $perPage = $limit;
+            $offset = ($page - 1) * $perPage;
+            
+            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
+            $total = $allMovies->count();
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $paginatedMovies,
+                    $total,
+                    $perPage,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Comportamento padrão se não houver ordenação customizada
         $movies = Movie::where('release_date', '>', now())
             ->orderBy('release_date', 'asc')
             ->orderBy('popularity', 'desc')
@@ -106,7 +153,54 @@ class MovieController extends Controller
     public function inTheaters(Request $request)
     {
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
         
+        // Obter ordenação customizada
+        $ordering = MovieOrdering::first();
+        $customOrder = $ordering ? ($ordering->in_theaters ?? []) : [];
+        
+        // Se tem ordenação customizada, usar ela primeiro
+        if (!empty($customOrder)) {
+            $tmdbIds = array_column($customOrder, 'id_tmdb');
+            
+            // Buscar os filmes da ordenação que existem no banco
+            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
+                ->get()
+                ->sortBy(function($movie) use ($tmdbIds) {
+                    return array_search($movie->tmdb_id, $tmdbIds);
+                })
+                ->values();
+            
+            // Buscar os demais filmes com filtro de data
+            $dateRange = [now()->subDays(30), now()];
+            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
+                ->whereBetween('release_date', $dateRange)
+                ->orderBy('release_date', 'desc')
+                ->orderBy('popularity', 'desc')
+                ->get();
+            
+            // Combinar os dois grupos
+            $allMovies = $orderedMovies->concat($remainingMovies);
+            
+            // Paginar manualmente
+            $perPage = $limit;
+            $offset = ($page - 1) * $perPage;
+            
+            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
+            $total = $allMovies->count();
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $paginatedMovies,
+                    $total,
+                    $perPage,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Comportamento padrão se não houver ordenação customizada
         $movies = Movie::whereBetween('release_date', [
                 now()->subDays(30),
                 now()
@@ -121,7 +215,54 @@ class MovieController extends Controller
     public function released(Request $request)
     {
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
         
+        // Obter ordenação customizada
+        $ordering = MovieOrdering::first();
+        $customOrder = $ordering ? ($ordering->released ?? []) : [];
+        
+        // Se tem ordenação customizada, usar ela primeiro
+        if (!empty($customOrder)) {
+            $tmdbIds = array_column($customOrder, 'id_tmdb');
+            
+            // Buscar os filmes da ordenação que existem no banco
+            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
+                ->get()
+                ->sortBy(function($movie) use ($tmdbIds) {
+                    return array_search($movie->tmdb_id, $tmdbIds);
+                })
+                ->values();
+            
+            // Buscar os demais filmes com filtro de data
+            $dateRange = [now()->subDays(30), now()->subDays(7)];
+            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
+                ->whereBetween('release_date', $dateRange)
+                ->orderBy('release_date', 'desc')
+                ->orderBy('popularity', 'desc')
+                ->get();
+            
+            // Combinar os dois grupos
+            $allMovies = $orderedMovies->concat($remainingMovies);
+            
+            // Paginar manualmente
+            $perPage = $limit;
+            $offset = ($page - 1) * $perPage;
+            
+            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
+            $total = $allMovies->count();
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $paginatedMovies,
+                    $total,
+                    $perPage,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Comportamento padrão se não houver ordenação customizada
         $movies = Movie::whereBetween('release_date', [
                 now()->subDays(30),
                 now()->subDays(7)

@@ -42,7 +42,7 @@
             <ul>
               <li>📽️ <strong>Próximas Estreias</strong> - Fique por dentro dos filmes que estão chegando aos cinemas</li>
               <li>🎟️ <strong>Em Cartaz</strong> - Veja quais filmes estão passando agora nos cinemas</li>
-              <li>🍿 <strong>Lançamentos Recentes</strong> - Descubra os filmes que acabaram de estrear</li>
+              <li>🍿 <strong>Lançados em Alta</strong> - Descubra os filmes que acabaram de estrear</li>
               <li>📺 <strong>Onde Assistir</strong> - Saiba em quais plataformas de streaming cada filme está disponível</li>
               <li>⭐ <strong>Avaliações e Críticas</strong> - Confira as opiniões sobre cada filme</li>
               <li>🎥 <strong>Trailers</strong> - Assista aos trailers oficiais direto no site</li>

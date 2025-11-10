@@ -320,7 +320,7 @@ export default {
       useHead({
         title: `${info.flag} Filmes ${info.name} - Guia de Filmes`,
         meta: [
-          { name: 'description', content: `Descubra os melhores filmes de ${info.name}. Veja títulos populares, clássicos e lançamentos recentes do cinema ${info.name.toLowerCase()}.` },
+          { name: 'description', content: `Descubra os melhores filmes de ${info.name}. Veja títulos populares, clássicos e lançados em alta do cinema ${info.name.toLowerCase()}.` },
           { name: 'keywords', content: `filmes ${info.name.toLowerCase()}, cinema ${info.name.toLowerCase()}, filmes, ${info.name}` },
           { property: 'og:title', content: `${info.flag} Filmes ${info.name} - Guia de Filmes` },
           { property: 'og:description', content: `Descubra os melhores filmes de ${info.name}` }

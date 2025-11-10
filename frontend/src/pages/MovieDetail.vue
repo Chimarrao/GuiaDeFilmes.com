@@ -115,108 +115,120 @@
             </h2>
             <div class="content has-text-white-ter is-size-5">
               
-              <!-- Where to Watch - Dynamic from Watchmode API -->
-              <div v-if="getWatchData() && getWatchData().length > 0" class="mt-4">
+              <!-- Where to Watch - JustWatch Data (prioridade) -->
+              <div v-if="hasJustWatchData()" class="mt-4">
                 
-                <!-- Subscription Platforms -->
-                <div v-if="subscriptionPlatforms.length > 0" class="mb-5">
+                <!-- Assinatura (FLATRATE) -->
+                <div v-if="flatratePlatforms.length > 0" class="mb-5">
                   <h3 class="title is-5 has-text-white mb-3">
                     <span class="icon-text">
                       <span class="icon has-text-success">
                         <i class="fas fa-play-circle"></i>
                       </span>
-                      <span>Disponível para Assinatura</span>
+                      <span>Disponível em Assinatura</span>
                     </span>
                   </h3>
-                  <div class="streaming-logos">
+                  <div class="platform-grid">
                     <a 
-                      v-for="(platform, index) in subscriptionPlatforms" 
-                      :key="`sub-${index}`"
-                      :href="getStreamingUrl(platform)" 
+                      v-for="(platform, index) in flatratePlatforms" 
+                      :key="`flatrate-${index}`"
+                      :href="platform.url" 
                       target="_blank"
-                      class="streaming-item"
-                      :title="`Assistir em ${platform.name} - ${platform.format}`"
+                      class="platform-card"
+                      :title="`Assistir ${movie.title} em ${platform.platform}`"
                     >
-                      <img 
-                        v-if="platform.logo" 
-                        :src="platform.logo.replace('dark', 'light')" 
-                        :alt="platform.name"
-                        @error="handleImageError"
-                      >
-                      <div v-else class="platform-fallback">{{ platform.name }}</div>
-                      <span class="tag is-success is-light mt-2">{{ platform.format }}</span>
+                      <div class="platform-icon">
+                        <img 
+                          :src="platform.icon" 
+                          :alt="platform.platform"
+                          @error="handleImageError"
+                        >
+                      </div>
+                      <div class="platform-info">
+                        <span class="platform-name">{{ platform.platform }}</span>
+                        <span class="platform-quality">{{ formatQuality(platform.quality) }}</span>
+                      </div>
                     </a>
                   </div>
                 </div>
 
-                <!-- Rent/Buy Platforms -->
-                <div v-if="rentBuyPlatforms.length > 0" class="mb-5">
+                <!-- Alugar (RENT) -->
+                <div v-if="rentPlatforms.length > 0" class="mb-5">
                   <h3 class="title is-5 has-text-white mb-3">
                     <span class="icon-text">
                       <span class="icon has-text-warning">
-                        <i class="fas fa-shopping-cart"></i>
+                        <i class="fas fa-ticket-alt"></i>
                       </span>
-                      <span>Disponível para Alugar/Comprar</span>
+                      <span>Disponível para Alugar</span>
                     </span>
                   </h3>
-                  <div class="streaming-logos">
+                  <div class="platform-grid">
                     <a 
-                      v-for="(platform, index) in rentBuyPlatforms" 
+                      v-for="(platform, index) in rentPlatforms" 
                       :key="`rent-${index}`"
-                      :href="getStreamingUrl(platform)" 
+                      :href="platform.url" 
                       target="_blank"
-                      class="streaming-item"
-                      :title="`${platform.name} - ${platform.format}${platform.price ? ` - ${platform.price}` : ''}`"
+                      class="platform-card"
+                      :title="`Alugar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`"
                     >
-                      <img 
-                        v-if="platform.logo" 
-                        :src="platform.logo" 
-                        :alt="platform.name"
-                        @error="handleImageError"
-                      >
-                      <div v-else class="platform-fallback">{{ platform.name }}</div>
-                      <span class="tag is-warning is-light mt-2">
-                        {{ platform.format }}
-                        <span v-if="platform.price"> - {{ platform.price }}</span>
-                      </span>
+                      <div class="platform-icon">
+                        <img 
+                          :src="platform.icon" 
+                          :alt="platform.platform"
+                          @error="handleImageError"
+                        >
+                      </div>
+                      <div class="platform-info">
+                        <span class="platform-name">{{ platform.platform }}</span>
+                        <div class="platform-details">
+                          <span class="platform-quality">{{ formatQuality(platform.quality) }}</span>
+                          <span v-if="platform.price" class="platform-price">{{ formatPrice(platform.price) }}</span>
+                        </div>
+                      </div>
                     </a>
                   </div>
                 </div>
 
-                <!-- Free Platforms -->
-                <div v-if="freePlatforms.length > 0" class="mb-5">
+                <!-- Comprar (BUY) -->
+                <div v-if="buyPlatforms.length > 0" class="mb-5">
                   <h3 class="title is-5 has-text-white mb-3">
                     <span class="icon-text">
                       <span class="icon has-text-info">
-                        <i class="fas fa-gift"></i>
+                        <i class="fas fa-shopping-cart"></i>
                       </span>
-                      <span>Disponível Gratuitamente</span>
+                      <span>Disponível para Comprar</span>
                     </span>
                   </h3>
-                  <div class="streaming-logos">
+                  <div class="platform-grid">
                     <a 
-                      v-for="(platform, index) in freePlatforms" 
-                      :key="`free-${index}`"
-                      :href="getStreamingUrl(platform)" 
+                      v-for="(platform, index) in buyPlatforms" 
+                      :key="`buy-${index}`"
+                      :href="platform.url" 
                       target="_blank"
-                      class="streaming-item"
-                      :title="`Assistir grátis em ${platform.name} - ${platform.format}`"
+                      class="platform-card"
+                      :title="`Comprar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`"
                     >
-                      <img 
-                        v-if="platform.logo" 
-                        :src="platform.logo" 
-                        :alt="platform.name"
-                        @error="handleImageError"
-                      >
-                      <div v-else class="platform-fallback">{{ platform.name }}</div>
-                      <span class="tag is-info is-light mt-2">{{ platform.format }}</span>
+                      <div class="platform-icon">
+                        <img 
+                          :src="platform.icon" 
+                          :alt="platform.platform"
+                          @error="handleImageError"
+                        >
+                      </div>
+                      <div class="platform-info">
+                        <span class="platform-name">{{ platform.platform }}</span>
+                        <div class="platform-details">
+                          <span class="platform-quality">{{ formatQuality(platform.quality) }}</span>
+                          <span v-if="platform.price" class="platform-price">{{ formatPrice(platform.price) }}</span>
+                        </div>
+                      </div>
                     </a>
                   </div>
                 </div>
 
                 <p class="mt-4 is-size-6 has-text-grey-light">
                   <i class="fas fa-info-circle has-text-white"></i>
-                  <em> Disponibilidade verificada para Brasil. Clique nos logos para acessar as plataformas.</em>
+                  <em> Disponibilidade verificada para Brasil. Clique para acessar diretamente na plataforma.</em>
                 </p>
               </div>
 
@@ -1068,42 +1080,73 @@ export default {
       return groups
     })
 
-    const getWatchData = () => {
-      if (!movie.value) {
-        return null
+    // Normaliza os dados do JustWatch para um formato único
+    const normalizeJustWatchData = () => {
+      if (!movie.value || !movie.value.justwatch_watch_info) {
+        return []
       }
       
-      // Priorizar justwatch_watch_info se existir e tiver dados
-      if (movie.value.justwatch_watch_info && Array.isArray(movie.value.justwatch_watch_info) && movie.value.justwatch_watch_info.length > 0) {
-        return movie.value.justwatch_watch_info
+      const data = movie.value.justwatch_watch_info
+      if (!Array.isArray(data) || data.length === 0) {
+        return []
       }
-      
-      // Fallback para where_to_watch
-      if (movie.value.where_to_watch && Array.isArray(movie.value.where_to_watch) && movie.value.where_to_watch.length > 0) {
-        return movie.value.where_to_watch
+
+      // Formato 1: Array direto de plataformas
+      // [{ url, icon, type, price, quality, platform }]
+      if (data[0].platform && data[0].type) {
+        return data
       }
-      
-      return null
+
+      // Formato 2: Objeto com offers
+      // [{ url, title, offers: [{ url, icon, type, price, quality, platform }] }]
+      if (data[0].offers && Array.isArray(data[0].offers)) {
+        return data[0].offers
+      }
+
+      // Se não reconhecer o formato, retorna vazio
+      return []
     }
 
-    // Filter platforms by type
-    const subscriptionPlatforms = computed(() => {
-      const watchData = getWatchData()
-      if (!watchData) return []
-      return watchData.filter(p => p.type === 'FLATRATE' || p.type === 'subscription')
+    // Verifica se tem dados do JustWatch
+    const hasJustWatchData = () => {
+      return normalizeJustWatchData().length > 0
+    }
+
+    // Separa plataformas por tipo (JustWatch format)
+    const flatratePlatforms = computed(() => {
+      const normalized = normalizeJustWatchData()
+      return normalized.filter(p => p.type === 'FLATRATE')
     })
 
-    const rentBuyPlatforms = computed(() => {
-      const watchData = getWatchData()
-      if (!watchData) return []
-      return watchData.filter(p => p.type === 'RENT' || p.type === 'BUY' || p.type === 'rent' || p.type === 'buy')
+    const rentPlatforms = computed(() => {
+      const normalized = normalizeJustWatchData()
+      return normalized.filter(p => p.type === 'RENT')
     })
 
-    const freePlatforms = computed(() => {
-      const watchData = getWatchData()
-      if (!watchData) return []
-      return watchData.filter(p => p.type === 'ADS' || p.type === 'free')
+    const buyPlatforms = computed(() => {
+      const normalized = normalizeJustWatchData()
+      return normalized.filter(p => p.type === 'BUY')
     })
+
+    // Formata qualidade (remove _ e torna maiúsculo)
+    const formatQuality = (quality) => {
+      if (!quality) return 'HD'
+      // Remove underscore e torna uppercase
+      // Ex: "_4K" vira "4K", "HD" continua "HD"
+      return quality.replace('_', '').toUpperCase()
+    }
+
+    // Formata preço (de "19,90 R$" para "R$ 19,90")
+    const formatPrice = (price) => {
+      if (!price) return ''
+      // Verifica se está no formato antigo "valor R$"
+      const match = price.match(/^(\d+[,.]?\d*)\s*R\$/)
+      if (match) {
+        return `R$ ${match[1]}`
+      }
+      // Se já está correto ou outro formato, retorna como está
+      return price
+    }
 
     const uniquePosters = computed(() => {
       if (!movie.value?.images?.posters) {
@@ -1209,10 +1252,12 @@ export default {
       hasVideos,
       hasPhotos,
       groupedVideos,
-      getWatchData,
-      subscriptionPlatforms,
-      rentBuyPlatforms,
-      freePlatforms,
+      hasJustWatchData,
+      flatratePlatforms,
+      rentPlatforms,
+      buyPlatforms,
+      formatQuality,
+      formatPrice,
       uniquePosters,
       uniqueBackdrops,
       handleImageError,
@@ -1451,41 +1496,88 @@ export default {
   border-left: 4px solid var(--primary-color);
 }
 
-.cinema-logos, .streaming-logos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+/* Platform Grid - Layout limpo e organizado */
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.platform-card {
   background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.cinema-item, .streaming-item {
-  background-color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: transform 0.3s;
-  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 120px;
+  gap: 1rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.cinema-item:hover, .streaming-item:hover {
-  transform: scale(1.05);
+.platform-card:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
 }
 
-.cinema-item img, .streaming-item img {
-  height: 40px;
-  width: auto;
-  display: block;
-  max-width: 120px;
+.platform-icon {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  background-color: white;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.platform-icon img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+}
+
+.platform-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.platform-name {
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.platform-details {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.platform-quality {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.platform-price {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .platform-fallback {
@@ -1530,12 +1622,22 @@ export default {
     font-size: 0.9rem;
   }
 
-  .cinema-logos, .streaming-logos {
-    gap: 1rem;
+  .platform-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
-  .cinema-item img, .streaming-item img {
-    height: 30px;
+  .platform-card {
+    padding: 0.75rem;
+  }
+
+  .platform-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .platform-name {
+    font-size: 0.875rem;
   }
 
   .rating-section {

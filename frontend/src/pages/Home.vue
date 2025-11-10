@@ -93,13 +93,13 @@
         </div>
       </section>
 
-      <!-- Lançamentos Recentes Section -->
+      <!-- Lançados em Alta Section -->
       <section class="section">
         <div class="section-header">
           <span class="icon">
             <i class="fas fa-fire"></i>
           </span>
-          <h2>Lançamentos Recentes</h2>
+          <h2>Lançados em Alta</h2>
         </div>
 
         <div v-if="loading" class="loading">
@@ -160,7 +160,7 @@ export default {
         { property: 'og:image', content: 'https://guiadefilmes.com/og-image.jpg' },
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'Guia de Filmes - Descubra os Melhores Filmes' },
-        { name: 'twitter:description', content: 'Explore filmes em cartaz, estreias e lançamentos recentes' },
+        { name: 'twitter:description', content: 'Explore filmes em cartaz, estreias e lançados em alta' },
         { name: 'twitter:image', content: 'https://guiadefilmes.com/og-image.jpg' }
       ],
       script: [
@@ -188,8 +188,8 @@ export default {
         // Carregar próximas estreias
         await store.fetchMovies('upcoming')
         upcomingMovies.value = store.movies.slice(0, 6)
-        
-        // Carregar lançamentos recentes
+
+        // Carregar lançados em alta
         await store.fetchMovies('released')
         recentMovies.value = store.movies.slice(0, 6)
       } catch (error) {

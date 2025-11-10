@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->json('in_theaters')->nullable()->comment('Ordem dos filmes Em Cartaz');
             $table->json('upcoming')->nullable()->comment('Ordem dos filmes Próximas Estreias');
-            $table->json('released')->nullable()->comment('Ordem dos filmes Lançamentos Recentes');
+            $table->json('released')->nullable()->comment('Ordem dos filmes já lançados');
             $table->timestamps();
         });
 

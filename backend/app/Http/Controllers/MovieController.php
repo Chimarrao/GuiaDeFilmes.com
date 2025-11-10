@@ -6,6 +6,8 @@ use App\Models\Movie;
 use App\Models\MovieOrdering;
 use App\Http\Resources\MovieListResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class MovieController extends Controller
 {
@@ -97,48 +99,89 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
         
-        // Obter ordenação customizada
-        $ordering = MovieOrdering::first();
+        // Obter ordenação customizada com cache
+        $ordering = Cache::remember('movie_ordering', 3600, function () {
+            return MovieOrdering::first();
+        });
+        
         $customOrder = $ordering ? ($ordering->upcoming ?? []) : [];
         
-        // Se tem ordenação customizada, usar ela primeiro
-        if (!empty($customOrder)) {
+        // Se tem ordenação customizada, usar lógica otimizada
+        if (!empty($customOrder) && count($customOrder) > 0) {
             $tmdbIds = array_column($customOrder, 'id_tmdb');
             
-            // Buscar os filmes da ordenação que existem no banco
-            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
-                ->get()
-                ->sortBy(function($movie) use ($tmdbIds) {
-                    return array_search($movie->tmdb_id, $tmdbIds);
-                })
-                ->values();
+            // Calcular offset
+            $offset = ($page - 1) * $limit;
             
-            // Buscar os demais filmes com filtro de data
-            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
-                ->where('release_date', '>', now())
-                ->orderBy('release_date', 'asc')
-                ->orderBy('popularity', 'desc')
-                ->get();
+            // Total de filmes ordenados
+            $orderedCount = count($tmdbIds);
             
-            // Combinar os dois grupos
-            $allMovies = $orderedMovies->concat($remainingMovies);
-            
-            // Paginar manualmente
-            $perPage = $limit;
-            $offset = ($page - 1) * $perPage;
-            
-            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
-            $total = $allMovies->count();
-            
-            return MovieListResource::collection(
-                new \Illuminate\Pagination\LengthAwarePaginator(
-                    $paginatedMovies,
-                    $total,
-                    $perPage,
-                    $page,
-                    ['path' => $request->url(), 'query' => $request->query()]
-                )
-            );
+            // Se a página ainda está dentro dos filmes ordenados
+            if ($offset < $orderedCount) {
+                // Pegar os IDs da página atual
+                $pageIds = array_slice($tmdbIds, $offset, $limit);
+                
+                // Buscar apenas os filmes necessários
+                $orderedMovies = Movie::whereIn('tmdb_id', $pageIds)->get();
+                
+                // Ordenar conforme o array original
+                $orderedMovies = $orderedMovies->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->tmdb_id, $pageIds);
+                })->values();
+                
+                // Se precisa completar a página com filmes não ordenados
+                $remaining = $limit - $orderedMovies->count();
+                if ($remaining > 0) {
+                    $additionalMovies = Movie::where('release_date', '>', now())
+                        ->orderBy('release_date', 'asc')
+                        ->orderBy('popularity', 'desc')
+                        ->limit($remaining)
+                        ->get();
+                    
+                    $orderedMovies = $orderedMovies->concat($additionalMovies);
+                }
+                
+                // Total aproximado (evita count com whereNotIn que é lento)
+                $totalUpcoming = Cache::remember('upcoming_count', 300, function () {
+                    return Movie::where('release_date', '>', now())->count();
+                });
+                $total = $orderedCount + $totalUpcoming;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $orderedMovies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            } else {
+                // Já passou dos filmes ordenados, pegar apenas os não ordenados
+                $adjustedOffset = $offset - $orderedCount;
+                
+                $movies = Movie::where('release_date', '>', now())
+                    ->orderBy('release_date', 'asc')
+                    ->orderBy('popularity', 'desc')
+                    ->skip($adjustedOffset)
+                    ->take($limit)
+                    ->get();
+                
+                $totalUpcoming = Cache::remember('upcoming_count', 300, function () {
+                    return Movie::where('release_date', '>', now())->count();
+                });
+                $total = $orderedCount + $totalUpcoming;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $movies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            }
         }
         
         // Comportamento padrão se não houver ordenação customizada
@@ -155,49 +198,89 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
         
-        // Obter ordenação customizada
-        $ordering = MovieOrdering::first();
+        // Obter ordenação customizada com cache
+        $ordering = Cache::remember('movie_ordering', 3600, function () {
+            return MovieOrdering::first();
+        });
         $customOrder = $ordering ? ($ordering->in_theaters ?? []) : [];
         
-        // Se tem ordenação customizada, usar ela primeiro
-        if (!empty($customOrder)) {
+        // Se tem ordenação customizada, usar lógica otimizada
+        if (!empty($customOrder) && count($customOrder) > 0) {
             $tmdbIds = array_column($customOrder, 'id_tmdb');
-            
-            // Buscar os filmes da ordenação que existem no banco
-            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
-                ->get()
-                ->sortBy(function($movie) use ($tmdbIds) {
-                    return array_search($movie->tmdb_id, $tmdbIds);
-                })
-                ->values();
-            
-            // Buscar os demais filmes com filtro de data
             $dateRange = [now()->subDays(30), now()];
-            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
-                ->whereBetween('release_date', $dateRange)
-                ->orderBy('release_date', 'desc')
-                ->orderBy('popularity', 'desc')
-                ->get();
             
-            // Combinar os dois grupos
-            $allMovies = $orderedMovies->concat($remainingMovies);
+            // Calcular offset
+            $offset = ($page - 1) * $limit;
             
-            // Paginar manualmente
-            $perPage = $limit;
-            $offset = ($page - 1) * $perPage;
+            // Total de filmes ordenados
+            $orderedCount = count($tmdbIds);
             
-            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
-            $total = $allMovies->count();
-            
-            return MovieListResource::collection(
-                new \Illuminate\Pagination\LengthAwarePaginator(
-                    $paginatedMovies,
-                    $total,
-                    $perPage,
-                    $page,
-                    ['path' => $request->url(), 'query' => $request->query()]
-                )
-            );
+            // Se a página ainda está dentro dos filmes ordenados
+            if ($offset < $orderedCount) {
+                // Pegar os IDs da página atual
+                $pageIds = array_slice($tmdbIds, $offset, $limit);
+                
+                // Buscar apenas os filmes necessários
+                $orderedMovies = Movie::whereIn('tmdb_id', $pageIds)->get();
+                
+                // Ordenar conforme o array original
+                $orderedMovies = $orderedMovies->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->tmdb_id, $pageIds);
+                })->values();
+                
+                // Se precisa completar a página com filmes não ordenados
+                $remaining = $limit - $orderedMovies->count();
+                if ($remaining > 0) {
+                    $additionalMovies = Movie::whereBetween('release_date', $dateRange)
+                        ->orderBy('release_date', 'desc')
+                        ->orderBy('popularity', 'desc')
+                        ->limit($remaining)
+                        ->get();
+                    
+                    $orderedMovies = $orderedMovies->concat($additionalMovies);
+                }
+                
+                // Total aproximado (evita count com whereNotIn que é lento)
+                $totalInTheaters = Cache::remember('in_theaters_count', 300, function () use ($dateRange) {
+                    return Movie::whereBetween('release_date', $dateRange)->count();
+                });
+                $total = $orderedCount + $totalInTheaters;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $orderedMovies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            } else {
+                // Já passou dos filmes ordenados, pegar apenas os não ordenados
+                $adjustedOffset = $offset - $orderedCount;
+                
+                $movies = Movie::whereBetween('release_date', $dateRange)
+                    ->orderBy('release_date', 'desc')
+                    ->orderBy('popularity', 'desc')
+                    ->skip($adjustedOffset)
+                    ->take($limit)
+                    ->get();
+                
+                $totalInTheaters = Cache::remember('in_theaters_count', 300, function () use ($dateRange) {
+                    return Movie::whereBetween('release_date', $dateRange)->count();
+                });
+                $total = $orderedCount + $totalInTheaters;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $movies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            }
         }
         
         // Comportamento padrão se não houver ordenação customizada
@@ -217,49 +300,89 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
         
-        // Obter ordenação customizada
-        $ordering = MovieOrdering::first();
+        // Obter ordenação customizada com cache
+        $ordering = Cache::remember('movie_ordering', 3600, function () {
+            return MovieOrdering::first();
+        });
         $customOrder = $ordering ? ($ordering->released ?? []) : [];
         
-        // Se tem ordenação customizada, usar ela primeiro
-        if (!empty($customOrder)) {
+        // Se tem ordenação customizada, usar lógica otimizada
+        if (!empty($customOrder) && count($customOrder) > 0) {
             $tmdbIds = array_column($customOrder, 'id_tmdb');
-            
-            // Buscar os filmes da ordenação que existem no banco
-            $orderedMovies = Movie::whereIn('tmdb_id', $tmdbIds)
-                ->get()
-                ->sortBy(function($movie) use ($tmdbIds) {
-                    return array_search($movie->tmdb_id, $tmdbIds);
-                })
-                ->values();
-            
-            // Buscar os demais filmes com filtro de data
             $dateRange = [now()->subDays(30), now()->subDays(7)];
-            $remainingMovies = Movie::whereNotIn('tmdb_id', $tmdbIds)
-                ->whereBetween('release_date', $dateRange)
-                ->orderBy('release_date', 'desc')
-                ->orderBy('popularity', 'desc')
-                ->get();
             
-            // Combinar os dois grupos
-            $allMovies = $orderedMovies->concat($remainingMovies);
+            // Calcular offset
+            $offset = ($page - 1) * $limit;
             
-            // Paginar manualmente
-            $perPage = $limit;
-            $offset = ($page - 1) * $perPage;
+            // Total de filmes ordenados
+            $orderedCount = count($tmdbIds);
             
-            $paginatedMovies = $allMovies->slice($offset, $perPage)->values();
-            $total = $allMovies->count();
-            
-            return MovieListResource::collection(
-                new \Illuminate\Pagination\LengthAwarePaginator(
-                    $paginatedMovies,
-                    $total,
-                    $perPage,
-                    $page,
-                    ['path' => $request->url(), 'query' => $request->query()]
-                )
-            );
+            // Se a página ainda está dentro dos filmes ordenados
+            if ($offset < $orderedCount) {
+                // Pegar os IDs da página atual
+                $pageIds = array_slice($tmdbIds, $offset, $limit);
+                
+                // Buscar apenas os filmes necessários
+                $orderedMovies = Movie::whereIn('tmdb_id', $pageIds)->get();
+                
+                // Ordenar conforme o array original
+                $orderedMovies = $orderedMovies->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->tmdb_id, $pageIds);
+                })->values();
+                
+                // Se precisa completar a página com filmes não ordenados
+                $remaining = $limit - $orderedMovies->count();
+                if ($remaining > 0) {
+                    $additionalMovies = Movie::whereBetween('release_date', $dateRange)
+                        ->orderBy('release_date', 'desc')
+                        ->orderBy('popularity', 'desc')
+                        ->limit($remaining)
+                        ->get();
+                    
+                    $orderedMovies = $orderedMovies->concat($additionalMovies);
+                }
+                
+                // Total aproximado (evita count com whereNotIn que é lento)
+                $totalReleased = Cache::remember('released_count', 300, function () use ($dateRange) {
+                    return Movie::whereBetween('release_date', $dateRange)->count();
+                });
+                $total = $orderedCount + $totalReleased;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $orderedMovies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            } else {
+                // Já passou dos filmes ordenados, pegar apenas os não ordenados
+                $adjustedOffset = $offset - $orderedCount;
+                
+                $movies = Movie::whereBetween('release_date', $dateRange)
+                    ->orderBy('release_date', 'desc')
+                    ->orderBy('popularity', 'desc')
+                    ->skip($adjustedOffset)
+                    ->take($limit)
+                    ->get();
+                
+                $totalReleased = Cache::remember('released_count', 300, function () use ($dateRange) {
+                    return Movie::whereBetween('release_date', $dateRange)->count();
+                });
+                $total = $orderedCount + $totalReleased;
+                
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        $movies,
+                        $total,
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            }
         }
         
         // Comportamento padrão se não houver ordenação customizada

@@ -53,6 +53,7 @@ class Movie extends Model
         'production_companies' => 'array',
         'production_countries' => 'array',
         'where_to_watch' => 'array',
+        'justwatch_watch_info' => 'array',
         'alternative_titles' => 'array',
         'external_ids' => 'array',
         'keywords' => 'array',

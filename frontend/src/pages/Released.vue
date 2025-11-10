@@ -9,7 +9,7 @@
               <span class="icon">
                 <i class="fas fa-box-open"></i>
               </span>
-              <span>Lançamentos Recentes</span>
+              <span>Lançados em Alta</span>
             </span>
           </p>
           <p class="subtitle is-4 has-text-white-ter">
@@ -143,16 +143,16 @@ export default {
 
     // SEO
     useHead({
-      title: 'Lançamentos Recentes - Guia de Filmes',
+      title: 'Lançados em Alta - Guia de Filmes',
       meta: [
-        { name: 'description', content: 'Veja os filmes que acabaram de estrear nos cinemas. Fique por dentro dos lançamentos mais recentes e não perca nenhuma novidade.' },
-        { property: 'og:title', content: 'Lançamentos Recentes - Guia de Filmes' },
+        { name: 'description', content: 'Veja os filmes que acabaram de estrear nos cinemas. Fique por dentro dos lançados em alta e não perca nenhuma novidade.' },
+        { property: 'og:title', content: 'Lançados em Alta - Guia de Filmes' },
         { property: 'og:description', content: 'Filmes recém lançados nos cinemas' },
         { property: 'og:type', content: 'website' },
         { property: 'og:url', content: window.location.href },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'Lançamentos Recentes - Guia de Filmes' },
-        { name: 'twitter:description', content: 'Confira os lançamentos mais recentes de filmes' }
+        { name: 'twitter:title', content: 'Lançados em Alta - Guia de Filmes' },
+        { name: 'twitter:description', content: 'Confira os filmes em alta' }
       ],
       script: [
         {
@@ -160,8 +160,8 @@ export default {
           innerHTML: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'ItemList',
-            name: 'Lançamentos Recentes de Filmes',
-            description: 'Lista de filmes recentemente lançados nos cinemas',
+            name: 'Lançados em Alta de Filmes',
+            description: 'Lista de filmes lançados em alta',
             url: window.location.href
           })
         }

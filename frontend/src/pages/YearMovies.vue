@@ -158,7 +158,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
 import api from '../services/api.js'
@@ -168,6 +168,7 @@ export default {
   components: { MovieCard },
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const movies = ref([])
     const isLoading = ref(false)
     const isLoadingMore = ref(false)
@@ -180,16 +181,49 @@ export default {
 
     const decade = computed(() => route.params.decade)
 
-    const decadeLabel = computed(() => {
-      const dec = parseInt(decade.value)
-      if (dec < 1960) return 'Clássicos'
-      return `Anos ${dec}`
-    })
+    // Mapeamento de slugs para décadas
+    const decadeMap = {
+      '2020s': { start: 2020, end: 2029, label: 'Anos 2020' },
+      '2010s': { start: 2010, end: 2019, label: 'Anos 2010' },
+      '2000s': { start: 2000, end: 2009, label: 'Anos 2000' },
+      '1990s': { start: 1990, end: 1999, label: 'Anos 1990' },
+      '1980s': { start: 1980, end: 1989, label: 'Anos 1980' },
+      '1970s': { start: 1970, end: 1979, label: 'Anos 1970' },
+      '1960s': { start: 1960, end: 1969, label: 'Anos 1960' },
+      '1950s': { start: 1950, end: 1959, label: 'Anos 1950' },
+      '1940s': { start: 1940, end: 1949, label: 'Anos 1940' },
+      '1930s': { start: 1930, end: 1939, label: 'Anos 1930' },
+      '1920s': { start: 1920, end: 1929, label: 'Anos 1920' },
+      'pre-1920': { start: 1900, end: 1919, label: 'Pré-1920' }
+    }
+
+    const getDecadeInfo = () => {
+      const slug = decade.value
+      
+      // Se o slug está no mapa, retorna
+      if (decadeMap[slug]) {
+        return decadeMap[slug]
+      }
+      
+      // Fallback: tenta converter para número (compatibilidade)
+      const dec = parseInt(slug)
+      if (dec >= 1900) {
+        return {
+          start: dec,
+          end: dec + 9,
+          label: `Anos ${dec}`
+        }
+      }
+      
+      // Padrão
+      return { start: 2020, end: 2029, label: 'Anos 2020' }
+    }
+
+    const decadeLabel = computed(() => getDecadeInfo().label)
 
     const decadeRange = computed(() => {
-      const dec = parseInt(decade.value)
-      if (dec < 1960) return 'Filmes antes de 1960'
-      return `Filmes de ${dec} a ${dec + 9}`
+      const info = getDecadeInfo()
+      return `Filmes de ${info.start} a ${info.end}`
     })
 
     useHead({
@@ -205,25 +239,17 @@ export default {
           isLoadingMore.value = true
         }
 
-        const dec = parseInt(decade.value)
         const params = { 
           page: page,
           limit: 20
         }
 
-        // Adicionar filtros de ano baseado na década
-        if (dec < 1960) {
-          params.yearTo = 1959
-        } else {
-          params.yearFrom = dec
-          params.yearTo = dec + 9
-        }
-
-        // Adicionar outros filtros se existirem
+        // Adicionar filtros se existirem
         if (filters.value.genre) params.genre = filters.value.genre
         if (filters.value.minRating) params.minRating = filters.value.minRating
 
-        const response = await api.get('/movies/filter', { params })
+        // Usar endpoint específico de década
+        const response = await api.get(`/movies/decade/${decade.value}`, { params })
 
         movies.value = response.data.data
         currentPage.value = response.data.meta?.current_page || response.data.current_page || 1
@@ -252,6 +278,7 @@ export default {
 
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
+        router.push({ query: { ...route.query, page } })
         window.scrollTo({ top: 0, behavior: 'smooth' })
         fetchMovies(page)
       }
@@ -288,14 +315,17 @@ export default {
     }
 
     onMounted(() => {
-      fetchMovies()
+      const pageFromUrl = parseInt(route.query.page) || 1
+      currentPage.value = pageFromUrl
+      fetchMovies(pageFromUrl)
     })
 
     watch(decade, () => {
       currentPage.value = 1
       movies.value = []
       filters.value = { genre: '', minRating: '' }
-      fetchMovies()
+      router.push({ query: {} })
+      fetchMovies(1)
     })
 
     return {

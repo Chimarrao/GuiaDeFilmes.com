@@ -49,13 +49,13 @@ for entry in results:
         "poster": entry.poster,
         "offers": [
             {
-                "platform": offer.name,
-                "type": offer.monetization_type,
-                "quality": offer.presentation_type,
-                "price": offer.price_string,
-                "currency": offer.price_currency,
-                "url": offer.url,
-                "icon": offer.icon
+                "platform": getattr(offer, 'name', None) or getattr(offer, 'package_short_name', None) or getattr(offer, 'technical_name', 'Unknown'),
+                "type": getattr(offer, 'monetization_type', None),
+                "quality": getattr(offer, 'presentation_type', None),
+                "price": getattr(offer, 'price_string', None),
+                "currency": getattr(offer, 'price_currency', None),
+                "url": getattr(offer, 'url', None),
+                "icon": getattr(offer, 'icon', None)
             }
             for offer in entry.offers
         ]

@@ -4,7 +4,8 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
+use App\Http\Controllers\JustWatchController;
 
 class JustwatchBackfill extends Command
 {
@@ -94,22 +95,25 @@ class JustwatchBackfill extends Command
             }
 
             try {
-                $params = ['query' => $title];
-                
-                // Adicionar release_date se disponível para melhor precisão
-                if ($releaseDate) {
-                    $params['release_date'] = $releaseDate;
-                }
+                // Criar um Request fake para passar ao controller
+                $request = new Request([
+                    'query' => $title,
+                    'release_date' => $releaseDate
+                ]);
 
-                $response = Http::timeout(20)->get('http://127.0.0.1:8000/api/justwatch/search', $params);
+                // Invocar diretamente o controller
+                $controller = new JustWatchController();
+                $response = $controller->search($request);
 
-                if (!$response->successful()) {
-                    $this->error("\n{$prefix} Erro HTTP: " . $response->status());
+                // Pegar o conteúdo da response
+                $data = json_decode($response->getContent(), true);
+
+                // Verificar se houve erro
+                if (isset($data['error'])) {
+                    $this->error("\n{$prefix} Erro: " . $data['error']);
                     $bar->advance();
                     continue;
                 }
-
-                $data = $response->json();
 
                 $offers = $data['offers'] ?? $data;
 

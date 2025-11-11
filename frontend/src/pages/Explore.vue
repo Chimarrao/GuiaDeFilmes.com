@@ -143,6 +143,8 @@ export default {
 
     const countries = ref([
       { code: 'BR', name: 'Brasil', flag: 'https://flagcdn.com/w40/br.png' },
+      { code: 'US', name: 'Estados Unidos', flag: 'https://flagcdn.com/w40/us.png' },
+      { code: 'GB', name: 'Reino Unido', flag: 'https://flagcdn.com/w40/gb.png' },
       { code: 'FR', name: 'França', flag: 'https://flagcdn.com/w40/fr.png' },
       { code: 'DE', name: 'Alemanha', flag: 'https://flagcdn.com/w40/de.png' },
       { code: 'IT', name: 'Itália', flag: 'https://flagcdn.com/w40/it.png' },
@@ -152,10 +154,9 @@ export default {
       { code: 'CN', name: 'China', flag: 'https://flagcdn.com/w40/cn.png' },
       { code: 'IN', name: 'Índia', flag: 'https://flagcdn.com/w40/in.png' },
       { code: 'AU', name: 'Austrália', flag: 'https://flagcdn.com/w40/au.png' },
-      { code: 'AR', name: 'Argentina', flag: 'https://flagcdn.com/w40/ar.png' },
-      { code: 'MX', name: 'México', flag: 'https://flagcdn.com/w40/mx.png' },
       { code: 'CA', name: 'Canadá', flag: 'https://flagcdn.com/w40/ca.png' },
-      { code: 'GB', name: 'Reino Unido', flag: 'https://flagcdn.com/w40/gb.png' },
+      { code: 'MX', name: 'México', flag: 'https://flagcdn.com/w40/mx.png' },
+      { code: 'AR', name: 'Argentina', flag: 'https://flagcdn.com/w40/ar.png' },
       { code: 'SE', name: 'Suécia', flag: 'https://flagcdn.com/w40/se.png' },
       { code: 'NO', name: 'Noruega', flag: 'https://flagcdn.com/w40/no.png' }
     ])
@@ -175,6 +176,7 @@ export default {
 .country-card {
   display: block;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .genre-card:hover,

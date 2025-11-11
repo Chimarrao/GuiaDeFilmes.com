@@ -2,7 +2,11 @@
   <div id="app">
     <Header />
     <main>
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['Released', 'Upcoming', 'InTheaters', 'GenreMovies', 'CountryMovies', 'YearMovies']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
     <Footer />
   </div>

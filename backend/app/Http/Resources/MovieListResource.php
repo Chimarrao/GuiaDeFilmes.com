@@ -25,7 +25,7 @@ class MovieListResource extends JsonResource
             'genres' => $this->genres,
             'poster_url' => $this->poster_url,
             'backdrop_url' => $this->backdrop_url,
-            'tmdb_rating' => $this->tmdb_rating,
+            'tmdb_rating' => $this->tmdb_vote_count >= 50 ? $this->tmdb_rating : null,
             'tmdb_vote_count' => $this->tmdb_vote_count,
             'popularity' => $this->popularity,
             'runtime' => $this->runtime,

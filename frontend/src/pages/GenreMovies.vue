@@ -154,7 +154,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
 import api from '../services/api.js'
@@ -164,6 +164,7 @@ export default {
   components: { MovieCard },
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const movies = ref([])
     const isLoading = ref(false)
     const isLoadingMore = ref(false)
@@ -256,6 +257,7 @@ export default {
 
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
+        router.push({ query: { ...route.query, page } })
         window.scrollTo({ top: 0, behavior: 'smooth' })
         fetchMovies(page)
       }
@@ -292,13 +294,16 @@ export default {
     }
 
     onMounted(() => {
-      fetchMovies()
+      const pageFromUrl = parseInt(route.query.page) || 1
+      currentPage.value = pageFromUrl
+      fetchMovies(pageFromUrl)
     })
 
     watch(genreSlug, () => {
       currentPage.value = 1
       movies.value = []
-      fetchMovies()
+      router.push({ query: {} })
+      fetchMovies(1)
     })
 
     return {

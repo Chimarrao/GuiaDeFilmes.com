@@ -133,6 +133,7 @@ class MovieController extends Controller
                 $remaining = $limit - $orderedMovies->count();
                 if ($remaining > 0) {
                     $additionalMovies = Movie::where('release_date', '>', now())
+                        ->whereNotIn('tmdb_id', $tmdbIds)
                         ->orderBy('release_date', 'asc')
                         ->orderBy('popularity', 'desc')
                         ->limit($remaining)
@@ -161,6 +162,7 @@ class MovieController extends Controller
                 $adjustedOffset = $offset - $orderedCount;
                 
                 $movies = Movie::where('release_date', '>', now())
+                    ->whereNotIn('tmdb_id', $tmdbIds)
                     ->orderBy('release_date', 'asc')
                     ->orderBy('popularity', 'desc')
                     ->skip($adjustedOffset)
@@ -232,6 +234,7 @@ class MovieController extends Controller
                 $remaining = $limit - $orderedMovies->count();
                 if ($remaining > 0) {
                     $additionalMovies = Movie::whereBetween('release_date', $dateRange)
+                        ->whereNotIn('tmdb_id', $tmdbIds)
                         ->orderBy('release_date', 'desc')
                         ->orderBy('popularity', 'desc')
                         ->limit($remaining)
@@ -260,6 +263,7 @@ class MovieController extends Controller
                 $adjustedOffset = $offset - $orderedCount;
                 
                 $movies = Movie::whereBetween('release_date', $dateRange)
+                    ->whereNotIn('tmdb_id', $tmdbIds)
                     ->orderBy('release_date', 'desc')
                     ->orderBy('popularity', 'desc')
                     ->skip($adjustedOffset)
@@ -300,98 +304,11 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
         
-        // Obter ordenação customizada com cache
-        $ordering = Cache::remember('movie_ordering', 3600, function () {
-            return MovieOrdering::first();
-        });
-        $customOrder = $ordering ? ($ordering->released ?? []) : [];
-        
-        // Se tem ordenação customizada, usar lógica otimizada
-        if (!empty($customOrder) && count($customOrder) > 0) {
-            $tmdbIds = array_column($customOrder, 'id_tmdb');
-            $dateRange = [now()->subDays(30), now()->subDays(7)];
-            
-            // Calcular offset
-            $offset = ($page - 1) * $limit;
-            
-            // Total de filmes ordenados
-            $orderedCount = count($tmdbIds);
-            
-            // Se a página ainda está dentro dos filmes ordenados
-            if ($offset < $orderedCount) {
-                // Pegar os IDs da página atual
-                $pageIds = array_slice($tmdbIds, $offset, $limit);
-                
-                // Buscar apenas os filmes necessários
-                $orderedMovies = Movie::whereIn('tmdb_id', $pageIds)->get();
-                
-                // Ordenar conforme o array original
-                $orderedMovies = $orderedMovies->sortBy(function($movie) use ($pageIds) {
-                    return array_search($movie->tmdb_id, $pageIds);
-                })->values();
-                
-                // Se precisa completar a página com filmes não ordenados
-                $remaining = $limit - $orderedMovies->count();
-                if ($remaining > 0) {
-                    $additionalMovies = Movie::whereBetween('release_date', $dateRange)
-                        ->orderBy('release_date', 'desc')
-                        ->orderBy('popularity', 'desc')
-                        ->limit($remaining)
-                        ->get();
-                    
-                    $orderedMovies = $orderedMovies->concat($additionalMovies);
-                }
-                
-                // Total aproximado (evita count com whereNotIn que é lento)
-                $totalReleased = Cache::remember('released_count', 300, function () use ($dateRange) {
-                    return Movie::whereBetween('release_date', $dateRange)->count();
-                });
-                $total = $orderedCount + $totalReleased;
-                
-                return MovieListResource::collection(
-                    new \Illuminate\Pagination\LengthAwarePaginator(
-                        $orderedMovies,
-                        $total,
-                        $limit,
-                        $page,
-                        ['path' => $request->url(), 'query' => $request->query()]
-                    )
-                );
-            } else {
-                // Já passou dos filmes ordenados, pegar apenas os não ordenados
-                $adjustedOffset = $offset - $orderedCount;
-                
-                $movies = Movie::whereBetween('release_date', $dateRange)
-                    ->orderBy('release_date', 'desc')
-                    ->orderBy('popularity', 'desc')
-                    ->skip($adjustedOffset)
-                    ->take($limit)
-                    ->get();
-                
-                $totalReleased = Cache::remember('released_count', 300, function () use ($dateRange) {
-                    return Movie::whereBetween('release_date', $dateRange)->count();
-                });
-                $total = $orderedCount + $totalReleased;
-                
-                return MovieListResource::collection(
-                    new \Illuminate\Pagination\LengthAwarePaginator(
-                        $movies,
-                        $total,
-                        $limit,
-                        $page,
-                        ['path' => $request->url(), 'query' => $request->query()]
-                    )
-                );
-            }
-        }
-        
-        // Comportamento padrão se não houver ordenação customizada
-        $movies = Movie::whereBetween('release_date', [
-                now()->subDays(30),
-                now()->subDays(7)
-            ])
-            ->orderBy('release_date', 'desc')
-            ->orderBy('popularity', 'desc')
+        // Ordenação por ano DESC, depois por votos DESC (sem custom ordering)
+        $currentYear = now()->year;
+        $movies = Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
+            ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
+            ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
             ->paginate($limit);
             
         return MovieListResource::collection($movies);
@@ -400,6 +317,7 @@ class MovieController extends Controller
     public function byGenre($genre, Request $request)
     {
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
         
         // Map slugs to genre names
         $genreMap = [
@@ -410,7 +328,7 @@ class MovieController extends Controller
             'ficcao-cientifica' => 'Ficção científica',
             'terror' => 'Terror',
             'romance' => 'Romance',
-            'suspense' => 'Suspense',
+            'suspense' => 'Thriller',
             'animacao' => 'Animação',
             'crime' => 'Crime',
             'documentario' => 'Documentário',
@@ -419,42 +337,250 @@ class MovieController extends Controller
             'guerra' => 'Guerra',
             'historia' => 'História',
             'misterio' => 'Mistério',
-            'musical' => 'Musical',
-            'western' => 'Western',
+            'musical' => 'Música',
+            'western' => 'Faroeste',
         ];
         
         $genreName = $genreMap[$genre] ?? $genre;
         
-        $movies = Movie::whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%'])
-            ->orderBy('popularity', 'desc')
-            ->paginate($limit);
-            
-        return MovieListResource::collection($movies);
+        // Cache dos IDs por gênero (revalidado a cada 2 horas)
+        $cacheKey = "genre_{$genre}_ids_v6";
+        $movieIds = Cache::remember($cacheKey, 7200, function () use ($genreName) {
+            return Movie::whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%'])
+                ->where('tmdb_vote_count', '>=', 50)
+                ->whereNotNull('release_date')
+                ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
+        
+        // Paginação manual dos IDs
+        $offset = ($page - 1) * $limit;
+        $pageIds = array_slice($movieIds, $offset, $limit);
+        
+        // Busca os filmes mantendo a ordem
+        $movies = Movie::whereIn('id', $pageIds)
+            ->get()
+            ->sortBy(function($movie) use ($pageIds) {
+                return array_search($movie->id, $pageIds);
+            })
+            ->values();
+        
+        $total = count($movieIds);
+        
+        return MovieListResource::collection(
+            new \Illuminate\Pagination\LengthAwarePaginator(
+                $movies,
+                $total,
+                $limit,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            )
+        );
     }
 
     public function byDecade($decade, Request $request)
     {
         $limit = $request->input('limit', 20);
-        $startYear = intval($decade);
+        $page = $request->input('page', 1);
         
-        if ($startYear < 1960) {
-            // Classics: before 1960
-            $movies = Movie::whereNotNull('release_date')
-                ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) < ?", [1960])
+        // Mapeamento de slugs para anos
+        $decadeMap = [
+            '2020s' => [2020, 2029],
+            '2010s' => [2010, 2019],
+            '2000s' => [2000, 2009],
+            '1990s' => [1990, 1999],
+            '1980s' => [1980, 1989],
+            '1970s' => [1970, 1979],
+            '1960s' => [1960, 1969],
+            '1950s' => [1950, 1959],
+            '1940s' => [1940, 1949],
+            '1930s' => [1930, 1939],
+            '1920s' => [1920, 1929],
+            'pre-1920' => [1850, 1919],
+        ];
+        
+        $startYear = null;
+        $endYear = null;
+        
+        // Se o slug está no mapa, usa o intervalo
+        if (isset($decadeMap[$decade])) {
+            [$startYear, $endYear] = $decadeMap[$decade];
+        } else {
+            // Fallback: tenta converter para número
+            $startYear = intval($decade);
+            if ($startYear >= 1900) {
+                $endYear = $startYear + 9;
+            } else {
+                return MovieListResource::collection(collect());
+            }
+        }
+        
+        // Cache dos IDs por década (revalidado a cada 2 horas)
+        $cacheKey = "decade_{$decade}_ids_v2";
+        $movieIds = Cache::remember($cacheKey, 7200, function () use ($startYear, $endYear) {
+            return Movie::whereNotNull('release_date')
+                ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
+                ->where('tmdb_vote_count', '>=', 50)
+                ->orderBy('tmdb_vote_count', 'desc')
+                ->orderBy('popularity', 'desc')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
+        
+        // Paginação manual
+        $offset = ($page - 1) * $limit;
+        $pageIds = array_slice($movieIds, $offset, $limit);
+        
+        // Busca os filmes mantendo a ordem
+        $movies = Movie::whereIn('id', $pageIds)
+            ->get()
+            ->sortBy(function($movie) use ($pageIds) {
+                return array_search($movie->id, $pageIds);
+            })
+            ->values();
+        
+        $total = count($movieIds);
+        
+        return MovieListResource::collection(
+            new \Illuminate\Pagination\LengthAwarePaginator(
+                $movies,
+                $total,
+                $limit,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            )
+        );
+    }
+
+    public function byCountry($countryCode, Request $request)
+    {
+        $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
+        
+        // Mapeamento de códigos de país (ISO 3166-1 alpha-2) para nomes completos
+        $countryMap = [
+            'BR' => 'Brazil',
+            'US' => 'United States of America',
+            'GB' => 'United Kingdom',
+            'FR' => 'France',
+            'DE' => 'Germany',
+            'IT' => 'Italy',
+            'ES' => 'Spain',
+            'JP' => 'Japan',
+            'KR' => 'South Korea',
+            'CN' => 'China',
+            'IN' => 'India',
+            'AU' => 'Australia',
+            'CA' => 'Canada',
+            'MX' => 'Mexico',
+            'AR' => 'Argentina',
+            'SE' => 'Sweden',
+            'NO' => 'Norway',
+            'RU' => 'Russia',
+            'TR' => 'Turkey',
+            'NL' => 'Netherlands',
+        ];
+        
+        $countryCode = strtoupper($countryCode);
+        $countryName = $countryMap[$countryCode] ?? null;
+        
+        if (!$countryName) {
+            return response()->json(['error' => 'País não encontrado'], 404);
+        }
+        
+        // Quando há filtros, não usar cache (senão cache explodiria)
+        $hasFilters = $request->filled('genre') || $request->filled('yearFrom') || 
+                      $request->filled('yearTo') || $request->filled('minRating');
+        
+        if ($hasFilters) {
+            // Query normal com filtros (sem cache)
+            $query = Movie::whereRaw("LOWER(production_countries) LIKE ?", ['%' . strtolower($countryName) . '%'])
+                ->where('tmdb_vote_count', '>=', 50);
+            
+            if ($request->filled('genre')) {
+                $genreMap = [
+                    'acao' => 'Ação',
+                    'aventura' => 'Aventura',
+                    'comedia' => 'Comédia',
+                    'drama' => 'Drama',
+                    'ficcao-cientifica' => 'Ficção científica',
+                    'terror' => 'Terror',
+                    'romance' => 'Romance',
+                    'suspense' => 'Suspense',
+                    'animacao' => 'Animação',
+                    'crime' => 'Crime',
+                    'documentario' => 'Documentário',
+                    'familia' => 'Família',
+                    'fantasia' => 'Fantasia',
+                    'guerra' => 'Guerra',
+                    'historia' => 'História',
+                    'misterio' => 'Mistério',
+                    'musical' => 'Musical',
+                    'western' => 'Western',
+                ];
+                
+                $genreName = $genreMap[$request->genre] ?? $request->genre;
+                $query->whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%']);
+            }
+            
+            if ($request->filled('yearFrom')) {
+                $query->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?", [intval($request->yearFrom)]);
+            }
+            
+            if ($request->filled('yearTo')) {
+                $query->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?", [intval($request->yearTo)]);
+            }
+            
+            if ($request->filled('minRating')) {
+                $query->where('tmdb_rating', '>=', floatval($request->minRating));
+            }
+            
+            $movies = $query
+                ->orderBy('tmdb_vote_count', 'desc')
                 ->orderBy('popularity', 'desc')
                 ->paginate($limit);
                 
             return MovieListResource::collection($movies);
         }
         
-        $endYear = $startYear + 9;
+        // Sem filtros: usa cache
+        $cacheKey = "country_{$countryCode}_ids_v2";
+        $movieIds = Cache::remember($cacheKey, 7200, function () use ($countryName) {
+            return Movie::whereRaw("LOWER(production_countries) LIKE ?", ['%' . strtolower($countryName) . '%'])
+                ->where('tmdb_vote_count', '>=', 50)
+                ->orderBy('tmdb_vote_count', 'desc')
+                ->orderBy('popularity', 'desc')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
         
-        $movies = Movie::whereNotNull('release_date')
-            ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
-            ->orderBy('popularity', 'desc')
-            ->paginate($limit);
-            
-        return MovieListResource::collection($movies);
+        // Paginação manual
+        $offset = ($page - 1) * $limit;
+        $pageIds = array_slice($movieIds, $offset, $limit);
+        
+        // Busca os filmes mantendo a ordem
+        $movies = Movie::whereIn('id', $pageIds)
+            ->get()
+            ->sortBy(function($movie) use ($pageIds) {
+                return array_search($movie->id, $pageIds);
+            })
+            ->values();
+        
+        $total = count($movieIds);
+        
+        return MovieListResource::collection(
+            new \Illuminate\Pagination\LengthAwarePaginator(
+                $movies,
+                $total,
+                $limit,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            )
+        );
     }
 
     public function filter(Request $request)

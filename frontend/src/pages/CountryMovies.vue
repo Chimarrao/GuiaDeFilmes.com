@@ -172,7 +172,7 @@
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
 import axios from 'axios'
@@ -184,6 +184,7 @@ export default {
   },
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const loading = ref(true)
     const isLoadingMore = ref(false)
     const movies = ref([])
@@ -198,23 +199,28 @@ export default {
     })
 
     const countryMap = {
-      'brasil': { name: 'Brasil', original: 'Brazil', flag: '🇧🇷' },
-      'estados-unidos': { name: 'Estados Unidos', original: 'United States of America', flag: '🇺🇸' },
-      'reino-unido': { name: 'Reino Unido', original: 'United Kingdom', flag: '🇬🇧' },
-      'franca': { name: 'França', original: 'France', flag: '🇫🇷' },
-      'alemanha': { name: 'Alemanha', original: 'Germany', flag: '🇩🇪' },
-      'italia': { name: 'Itália', original: 'Italy', flag: '🇮🇹' },
-      'espanha': { name: 'Espanha', original: 'Spain', flag: '🇪🇸' },
-      'mexico': { name: 'México', original: 'Mexico', flag: '🇲🇽' },
-      'canada': { name: 'Canadá', original: 'Canada', flag: '🇨🇦' },
-      'japao': { name: 'Japão', original: 'Japan', flag: '🇯🇵' },
-      'coreia-do-sul': { name: 'Coreia do Sul', original: 'South Korea', flag: '🇰🇷' },
-      'china': { name: 'China', original: 'China', flag: '🇨🇳' }
+      'BR': { name: 'Brasil', code: 'BR', flag: '🇧🇷' },
+      'US': { name: 'Estados Unidos', code: 'US', flag: '🇺🇸' },
+      'GB': { name: 'Reino Unido', code: 'GB', flag: '🇬🇧' },
+      'FR': { name: 'França', code: 'FR', flag: '🇫🇷' },
+      'DE': { name: 'Alemanha', code: 'DE', flag: '🇩🇪' },
+      'IT': { name: 'Itália', code: 'IT', flag: '🇮🇹' },
+      'ES': { name: 'Espanha', code: 'ES', flag: '🇪🇸' },
+      'MX': { name: 'México', code: 'MX', flag: '🇲🇽' },
+      'CA': { name: 'Canadá', code: 'CA', flag: '🇨🇦' },
+      'JP': { name: 'Japão', code: 'JP', flag: '🇯🇵' },
+      'KR': { name: 'Coreia do Sul', code: 'KR', flag: '🇰🇷' },
+      'CN': { name: 'China', code: 'CN', flag: '🇨🇳' },
+      'IN': { name: 'Índia', code: 'IN', flag: '🇮🇳' },
+      'AU': { name: 'Austrália', code: 'AU', flag: '🇦🇺' },
+      'AR': { name: 'Argentina', code: 'AR', flag: '�🇷' },
+      'SE': { name: 'Suécia', code: 'SE', flag: '🇸🇪' },
+      'NO': { name: 'Noruega', code: 'NO', flag: '🇳🇴' }
     }
 
     const getCountryInfo = () => {
-      const country = route.params.country
-      return countryMap[country] || { name: country, original: country, flag: '🌍' }
+      const countryCode = route.params.country.toUpperCase()
+      return countryMap[countryCode] || { name: countryCode, code: countryCode, flag: '🌍' }
     }
 
     const getCountryTitle = () => {
@@ -239,8 +245,7 @@ export default {
         
         const params = {
           page,
-          limit: 20,
-          country: countryInfo.original
+          limit: 20
         }
 
         // Adicionar filtros se existirem
@@ -248,8 +253,8 @@ export default {
         if (filters.value.yearFrom) params.yearFrom = filters.value.yearFrom
         if (filters.value.yearTo) params.yearTo = filters.value.yearTo
         if (filters.value.minRating) params.minRating = filters.value.minRating
-
-        const response = await axios.get('/api/movies/filter', { params })
+        
+        const response = await axios.get(`/api/movies/country/${countryInfo.code}`, { params })
         
         movies.value = response.data.data
         currentPage.value = response.data.meta?.current_page || response.data.current_page || 1
@@ -264,6 +269,7 @@ export default {
 
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
+        router.push({ query: { ...route.query, page } })
         window.scrollTo({ top: 0, behavior: 'smooth' })
         loadMovies(page)
       }
@@ -301,6 +307,7 @@ export default {
 
     const applyFilters = () => {
       currentPage.value = 1
+      router.push({ query: { page: 1 } })
       loadMovies(1)
     }
 
@@ -312,6 +319,7 @@ export default {
         minRating: ''
       }
       currentPage.value = 1
+      router.push({ query: {} })
       loadMovies(1)
     }
 
@@ -330,13 +338,16 @@ export default {
 
     onMounted(() => {
       updateMetaTags()
-      loadMovies()
+      const pageFromUrl = parseInt(route.query.page) || 1
+      currentPage.value = pageFromUrl
+      loadMovies(pageFromUrl)
     })
 
     watch(() => route.params.country, () => {
       updateMetaTags()
       currentPage.value = 1
       movies.value = []
+      router.push({ query: {} })
       clearFilters()
     })
 

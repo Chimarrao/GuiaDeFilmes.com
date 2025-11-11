@@ -48,37 +48,72 @@
             <span>Lançamentos</span>
           </router-link>
 
-          <div class="navbar-item has-dropdown is-hoverable" :class="{ 'is-active': isDropdownActive }">
-            <a class="navbar-link" @click.prevent="toggleDropdown">
+          <router-link to="/explorar" class="navbar-item" @click="closeMenu">
+            <span class="icon">
+              <i class="fas fa-compass"></i>
+            </span>
+            <span>Explorar</span>
+          </router-link>
+
+          <!-- Submenu Gênero -->
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link">
               <span class="icon">
-                <i class="fas fa-compass"></i>
+                <i class="fas fa-masks-theater"></i>
               </span>
-              <span>Explorar</span>
+              <span>Gênero</span>
             </a>
             <div class="navbar-dropdown">
-              <div class="navbar-item">
-                <p class="heading">Por Gênero</p>
-              </div>
               <router-link to="/explorar/genero/acao" class="navbar-item" @click="closeMenu">Ação</router-link>
+              <router-link to="/explorar/genero/aventura" class="navbar-item" @click="closeMenu">Aventura</router-link>
               <router-link to="/explorar/genero/comedia" class="navbar-item" @click="closeMenu">Comédia</router-link>
               <router-link to="/explorar/genero/drama" class="navbar-item" @click="closeMenu">Drama</router-link>
+              <router-link to="/explorar/genero/ficcao-cientifica" class="navbar-item" @click="closeMenu">Ficção Científica</router-link>
               <router-link to="/explorar/genero/terror" class="navbar-item" @click="closeMenu">Terror</router-link>
-              <hr class="navbar-divider">
-              <div class="navbar-item">
-                <p class="heading">Por Nacionalidade</p>
-              </div>
-              <router-link to="/explorar/pais/brasil" class="navbar-item" @click="closeMenu">🇧🇷 Brasil</router-link>
-              <router-link to="/explorar/pais/estados-unidos" class="navbar-item" @click="closeMenu">🇺🇸 Estados Unidos</router-link>
-              <router-link to="/explorar/pais/reino-unido" class="navbar-item" @click="closeMenu">🇬🇧 Reino Unido</router-link>
-              <router-link to="/explorar/pais/franca" class="navbar-item" @click="closeMenu">🇫🇷 França</router-link>
-              <hr class="navbar-divider">
-              <div class="navbar-item">
-                <p class="heading">Por Década</p>
-              </div>
-              <router-link to="/explorar/ano/2020" class="navbar-item" @click="closeMenu">Anos 2020</router-link>
-              <router-link to="/explorar/ano/2010" class="navbar-item" @click="closeMenu">Anos 2010</router-link>
-              <router-link to="/explorar/ano/2000" class="navbar-item" @click="closeMenu">Anos 2000</router-link>
-              <router-link to="/explorar/ano/1990" class="navbar-item" @click="closeMenu">Anos 1990</router-link>
+              <router-link to="/explorar/genero/romance" class="navbar-item" @click="closeMenu">Romance</router-link>
+              <router-link to="/explorar/genero/suspense" class="navbar-item" @click="closeMenu">Suspense</router-link>
+              <router-link to="/explorar/genero/animacao" class="navbar-item" @click="closeMenu">Animação</router-link>
+              <router-link to="/explorar/genero/fantasia" class="navbar-item" @click="closeMenu">Fantasia</router-link>
+            </div>
+          </div>
+
+          <!-- Submenu Nacionalidade -->
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link">
+              <span class="icon">
+                <i class="fas fa-globe"></i>
+              </span>
+              <span>Nacionalidade</span>
+            </a>
+            <div class="navbar-dropdown">
+              <router-link to="/explorar/pais/BR" class="navbar-item" @click="closeMenu">🇧🇷 Brasil</router-link>
+              <router-link to="/explorar/pais/US" class="navbar-item" @click="closeMenu">🇺🇸 Estados Unidos</router-link>
+              <router-link to="/explorar/pais/GB" class="navbar-item" @click="closeMenu">�� Reino Unido</router-link>
+              <router-link to="/explorar/pais/FR" class="navbar-item" @click="closeMenu">🇫🇷 França</router-link>
+              <router-link to="/explorar/pais/DE" class="navbar-item" @click="closeMenu">�� Alemanha</router-link>
+              <router-link to="/explorar/pais/IT" class="navbar-item" @click="closeMenu">🇮🇹 Itália</router-link>
+              <router-link to="/explorar/pais/ES" class="navbar-item" @click="closeMenu">🇪🇸 Espanha</router-link>
+              <router-link to="/explorar/pais/JP" class="navbar-item" @click="closeMenu">🇯🇵 Japão</router-link>
+              <router-link to="/explorar/pais/KR" class="navbar-item" @click="closeMenu">�🇷 Coreia do Sul</router-link>
+              <router-link to="/explorar/pais/IN" class="navbar-item" @click="closeMenu">🇮🇳 Índia</router-link>
+            </div>
+          </div>
+
+          <!-- Submenu Década -->
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link">
+              <span class="icon">
+                <i class="fas fa-calendar-alt"></i>
+              </span>
+              <span>Década</span>
+            </a>
+            <div class="navbar-dropdown">
+              <router-link to="/explorar/decada/2020s" class="navbar-item" @click="closeMenu">Anos 2020</router-link>
+              <router-link to="/explorar/decada/2010s" class="navbar-item" @click="closeMenu">Anos 2010</router-link>
+              <router-link to="/explorar/decada/2000s" class="navbar-item" @click="closeMenu">Anos 2000</router-link>
+              <router-link to="/explorar/decada/1990s" class="navbar-item" @click="closeMenu">Anos 1990</router-link>
+              <router-link to="/explorar/decada/1980s" class="navbar-item" @click="closeMenu">Anos 1980</router-link>
+              <router-link to="/explorar/decada/1970s" class="navbar-item" @click="closeMenu">Anos 1970</router-link>
             </div>
           </div>
 

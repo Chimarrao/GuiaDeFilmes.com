@@ -119,6 +119,7 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
@@ -131,6 +132,8 @@ export default {
   name: 'InTheaters',
   components: { MovieCard },
   setup() {
+    const route = useRoute()
+    const router = useRouter()
     const movies = ref([])
     const loading = ref(true)
     const isLoadingMore = ref(false)
@@ -176,21 +179,15 @@ export default {
           isLoadingMore.value = true
         }
 
-        const now = new Date()
-        const thirtyDaysAgo = new Date(now)
-        thirtyDaysAgo.setDate(now.getDate() - 30)
-
         const params = {
           page: page,
-          limit: 20,
-          yearFrom: thirtyDaysAgo.getFullYear(),
-          yearTo: now.getFullYear()
+          limit: 20
         }
 
         if (filters.value.genre) params.genre = filters.value.genre
         if (filters.value.minRating) params.minRating = filters.value.minRating
 
-        const response = await api.get('/movies/filter', { params })
+        const response = await api.get('/movies/in-theaters', { params })
 
         movies.value = response.data.data
         currentPage.value = response.data.meta?.current_page || response.data.current_page || 1
@@ -210,6 +207,7 @@ export default {
 
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
+        router.push({ query: { ...route.query, page } })
         window.scrollTo({ top: 0, behavior: 'smooth' })
         fetchMovies(page)
       }
@@ -242,7 +240,9 @@ export default {
     }
 
     onMounted(() => {
-      fetchMovies()
+      const pageFromUrl = parseInt(route.query.page) || 1
+      currentPage.value = pageFromUrl
+      fetchMovies(pageFromUrl)
     })
 
     return {

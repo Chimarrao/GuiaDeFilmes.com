@@ -21,7 +21,8 @@ const routes = [
   { path: '/buscar', component: Search },
   { path: '/explorar', component: Explore },
   { path: '/explorar/genero/:genre', component: GenreMovies },
-  { path: '/explorar/ano/:decade', component: YearMovies },
+  { path: '/explorar/decada/:decade', component: YearMovies },
+  { path: '/explorar/ano/:decade', component: YearMovies }, // Compatibilidade com formato antigo
   { path: '/explorar/pais/:country', component: CountryMovies }
 ]
 

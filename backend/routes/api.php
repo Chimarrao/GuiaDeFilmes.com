@@ -24,6 +24,7 @@ Route::get('/movies/in-theaters', [MovieController::class, 'inTheaters']);
 Route::get('/movies/released', [MovieController::class, 'released']);
 Route::get('/movies/genre/{genre}', [MovieController::class, 'byGenre']);
 Route::get('/movies/decade/{decade}', [MovieController::class, 'byDecade']);
+Route::get('/movies/country/{countryCode}', [MovieController::class, 'byCountry']);
 Route::get('/movies/filter', [MovieController::class, 'filter']);
 Route::get('/movie/{slug}', [MovieController::class, 'show']);
 Route::get('/justwatch/search', [JustWatchController::class, 'search']);

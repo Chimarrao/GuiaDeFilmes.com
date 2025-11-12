@@ -62,8 +62,8 @@ class Movie extends Model
     ];
 
     /**
-     * Set a given attribute on the model with proper JSON encoding
-     */
+     * Define um atributo no model com codificação JSON adequada
+    */
     public function setAttribute($key, $value)
     {
         if (in_array($key, ['genres', 'cast', 'crew', 'videos', 'images', 'production_companies', 'production_countries', 'where_to_watch', 'alternative_titles', 'external_ids', 'keywords', 'similar'])) {
@@ -77,7 +77,7 @@ class Movie extends Model
     }
 
     /**
-     * Get the reviews for the movie.
+     * Obtém as reviews (avaliações) do filme
      */
     public function reviews()
     {

@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model Review - Armazena avaliações de filmes vindas do TMDB
+ */
 class Review extends Model
 {
     use HasFactory;

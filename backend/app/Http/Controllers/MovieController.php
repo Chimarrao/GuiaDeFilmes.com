@@ -32,32 +32,13 @@ class MovieController extends Controller
     }
 
     /**
-     * Busca filmes por termo com sistema de relevância em múltiplas etapas
+     * Busca filmes usando MySQL FULLTEXT Search (ultrarrápida)
      * 
-     * Sistema de busca inteligente com pontuação de relevância:
-     * 
-     * ETAPA 1 - Busca case-insensitive em campos principais:
-     * - Título começa com o termo (maior relevância) - Score 1
-     * - Título contém o termo - Score 2  
-     * - Título original começa com o termo - Score 3
-     * - Título original contém o termo - Score 4
-     * 
-     * ETAPA 2 - Busca em campos secundários:
-     * - Tagline (frase de efeito) - Score 5
-     * - Sinopse - Score 6
-     * 
-     * ETAPA 3 - Busca em metadados JSON:
-     * - Cast (elenco) - Score 7
-     * - Crew (equipe) - Score 8
-     * - Genres (gêneros) - Score 9
-     * 
-     * ETAPA 4 - Busca por palavras individuais (>= 3 caracteres):
-     * - Divide o termo e busca cada palavra separadamente - Score 10
-     * 
-     * Todas as buscas usam LOWER() para garantir case-insensitivity,
-     * resolvendo problemas com acentuação e maiúsculas/minúsculas.
-     * 
-     * Exemplo: "falcão" encontra "Falcão e o Soldado Invernal"
+     * FUNCIONAMENTO:
+     * - Usa índice FULLTEXT em (title, synopsis, tagline)
+     * - NATURAL LANGUAGE MODE: busca palavras relevantes automaticamente
+     * - Ordenação por score de relevância do MySQL (quanto maior, mais relevante)
+     * - Desempate por popularidade do TMDB
      * 
      * @param Request $request Contém 'q' (termo de busca) e 'limit' (itens por página)
      * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
@@ -77,56 +58,18 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $searchLower = strtolower($searchTerm);
 
-        // Normaliza o termo de busca - separa cada palavra
-        $searchWords = explode(' ', $searchLower);
-
-        $movies = Movie::where(function($query) use ($searchTerm, $searchLower, $searchWords) {
-            // ETAPA 1: Busca no título (case-insensitive usando LOWER)
-            $query->whereRaw("LOWER(title) LIKE ?", ["%{$searchLower}%"])
-                  ->orWhereRaw("LOWER(original_title) LIKE ?", ["%{$searchLower}%"]);
-            
-            // ETAPA 2: Busca em campos secundários
-            $query->orWhereRaw("LOWER(synopsis) LIKE ?", ["%{$searchLower}%"])
-                  ->orWhereRaw("LOWER(tagline) LIKE ?", ["%{$searchLower}%"]);
-            
-            // ETAPA 3: Busca em campos JSON (cast, crew, genres)
-            $query->orWhereRaw("LOWER(cast) LIKE ?", ["%{$searchLower}%"])
-                  ->orWhereRaw("LOWER(crew) LIKE ?", ["%{$searchLower}%"])
-                  ->orWhereRaw("LOWER(genres) LIKE ?", ["%{$searchLower}%"]);
-            
-            // ETAPA 4: Busca por cada palavra individualmente
-            foreach ($searchWords as $word) {
-                if (strlen($word) >= 3) { // Apenas palavras com 3+ caracteres
-                    $query->orWhereRaw("LOWER(title) LIKE ?", ["%{$word}%"])
-                          ->orWhereRaw("LOWER(original_title) LIKE ?", ["%{$word}%"]);
-                }
-            }
+        $movies = Movie::where(function($query) use ($searchTerm, $searchLower) {
+            // FULLTEXT em title, synopsis, tagline (ultrarrápido)
+            $query->whereRaw(
+                "MATCH(title, synopsis, tagline) AGAINST (? IN NATURAL LANGUAGE MODE)", 
+                [$searchTerm]
+            );
         })
-        // Ordenação por relevância: quanto menor o número, mais relevante
-        ->orderByRaw("
-            CASE 
-                WHEN LOWER(title) LIKE ? THEN 1
-                WHEN LOWER(title) LIKE ? THEN 2
-                WHEN LOWER(original_title) LIKE ? THEN 3
-                WHEN LOWER(original_title) LIKE ? THEN 4
-                WHEN LOWER(tagline) LIKE ? THEN 5
-                WHEN LOWER(synopsis) LIKE ? THEN 6
-                WHEN LOWER(cast) LIKE ? THEN 7
-                WHEN LOWER(crew) LIKE ? THEN 8
-                WHEN LOWER(genres) LIKE ? THEN 9
-                ELSE 10
-            END
-        ", [
-            "{$searchLower}%",      // Título começa com termo
-            "%{$searchLower}%",     // Título contém termo
-            "{$searchLower}%",      // Título original começa
-            "%{$searchLower}%",     // Título original contém
-            "%{$searchLower}%",     // Tagline
-            "%{$searchLower}%",     // Sinopse
-            "%{$searchLower}%",     // Cast
-            "%{$searchLower}%",     // Crew
-            "%{$searchLower}%",     // Genres
-        ])
+        // Ordenação por relevância (score) calculada pelo MySQL
+        ->orderByRaw(
+            "MATCH(title, synopsis, tagline) AGAINST (? IN NATURAL LANGUAGE MODE) DESC", 
+            [$searchTerm]
+        )
         // Desempate por popularidade
         ->orderBy('popularity', 'desc')
         ->paginate($limit);
@@ -188,8 +131,52 @@ class MovieController extends Controller
             );
         }
         
-        // Comportamento padrão: sem ordenação customizada
+        // Comportamento padrão com cache
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
+        
+        $cacheKey = "upcoming_ids_v1";
+        $cachedIds = Cache::remember($cacheKey, 7200, function () {
+            return Movie::where('status', 'upcoming')
+                ->orderBy('release_date', 'asc')
+                ->orderBy('popularity', 'desc')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
+        
+        $offset = ($page - 1) * $limit;
+        $totalCached = count($cachedIds);
+        
+        // Se a página está dentro do cache (páginas 1-10)
+        if ($offset < $totalCached) {
+            $pageIds = array_slice($cachedIds, $offset, $limit);
+            
+            // Busca filmes mantendo ordem do cache
+            $movies = Movie::whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->id, $pageIds);
+                })
+                ->values();
+            
+            // Contagem total (cache)
+            $totalCount = Cache::remember('upcoming_total_count', 3600, function () {
+                return Movie::where('status', 'upcoming')->count();
+            });
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $movies,
+                    $totalCount,
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Páginas além do cache: query direta
         $movies = Movie::where('status', 'upcoming')
             ->orderBy('release_date', 'asc')
             ->orderBy('popularity', 'desc')
@@ -226,8 +213,53 @@ class MovieController extends Controller
             );
         }
         
-        // Comportamento padrão: sem ordenação customizada
+        // Comportamento padrão com cache
         $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
+        
+        // Cache de IDs pré-ordenados (200 filmes = 10 páginas)
+        $cacheKey = "in_theaters_ids_v1";
+        $cachedIds = Cache::remember($cacheKey, 7200, function () {
+            return Movie::where('status', 'in_theaters')
+                ->orderBy('release_date', 'desc')
+                ->orderBy('popularity', 'desc')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
+        
+        $offset = ($page - 1) * $limit;
+        $totalCached = count($cachedIds);
+        
+        // Se a página está dentro do cache (páginas 1-10)
+        if ($offset < $totalCached) {
+            $pageIds = array_slice($cachedIds, $offset, $limit);
+            
+            // Busca filmes mantendo ordem do cache
+            $movies = Movie::whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->id, $pageIds);
+                })
+                ->values();
+            
+            // Contagem total (cache)
+            $totalCount = Cache::remember('in_theaters_total_count', 3600, function () {
+                return Movie::where('status', 'in_theaters')->count();
+            });
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $movies,
+                    $totalCount,
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Páginas além do cache: query direta
         $movies = Movie::where('status', 'in_theaters')
             ->orderBy('release_date', 'desc')
             ->orderBy('popularity', 'desc')

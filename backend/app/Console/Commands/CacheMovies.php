@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Movie;
 use App\Enums\{DecadeRange, CountryCode, GenreSlug};
+use Illuminate\Support\Facades\Log;
 
 class CacheMovies extends Command
 {
@@ -18,6 +19,8 @@ class CacheMovies extends Command
      */
     public function handle()
     {
+        Log::info('Cache:Generate executado em ' . now());
+
         // Garantir que os diretórios de cache existam
         $this->ensureCacheDirectories();
         
@@ -109,7 +112,7 @@ class CacheMovies extends Command
             ->orderBy('release_date', 'asc')
             ->orderBy('popularity', 'desc');
         
-        $count = Cache::remember('upcoming_count', 300, function () use ($baseQuery) {
+        $count = Cache::remember('upcoming_count', 7200, function () use ($baseQuery) {
             return $baseQuery->count();
         });
         
@@ -130,7 +133,7 @@ class CacheMovies extends Command
             ->orderBy('release_date', 'desc')
             ->orderBy('popularity', 'desc');
         
-        $count = Cache::remember('in_theaters_count', 300, function () use ($baseQuery) {
+        $count = Cache::remember('in_theaters_count', 7200, function () use ($baseQuery) {
             return $baseQuery->count();
         });
         

@@ -54,7 +54,5 @@ return new class extends Migration
                 'justwatch_watch_info'
             ]);
         });
-        
-        // Nota: Não recriamos as tabelas removidas no rollback pois não estavam sendo usadas
     }
 };

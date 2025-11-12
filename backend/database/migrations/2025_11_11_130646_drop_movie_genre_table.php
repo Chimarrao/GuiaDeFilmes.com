@@ -12,11 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::dropIfExists('movie_genre');
-        
-        // Também remover o índice composto que foi criado
-        Schema::table('movies', function (Blueprint $table) {
-            $table->dropIndex('idx_movies_vote_popularity');
-        });
     }
 
     /**

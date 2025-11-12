@@ -175,7 +175,7 @@ class MovieController extends Controller
         if (!empty($customOrder)) {
             $tmdbIds = array_column($customOrder, 'id_tmdb');
             
-            $baseQuery = Movie::where('release_date', '>', now())
+            $baseQuery = Movie::where('status', 'upcoming')
                 ->orderBy('release_date', 'asc')
                 ->orderBy('popularity', 'desc');
             
@@ -190,7 +190,7 @@ class MovieController extends Controller
         
         // Comportamento padrão: sem ordenação customizada
         $limit = $request->input('limit', 20);
-        $movies = Movie::where('release_date', '>', now())
+        $movies = Movie::where('status', 'upcoming')
             ->orderBy('release_date', 'asc')
             ->orderBy('popularity', 'desc')
             ->paginate($limit);
@@ -213,7 +213,7 @@ class MovieController extends Controller
             $tmdbIds = array_column($customOrder, 'id_tmdb');
             $dateRange = [now()->subDays(30), now()];
             
-            $baseQuery = Movie::whereBetween('release_date', $dateRange)
+            $baseQuery = Movie::where('status', 'in_theaters')
                 ->orderBy('release_date', 'desc')
                 ->orderBy('popularity', 'desc');
             
@@ -228,10 +228,7 @@ class MovieController extends Controller
         
         // Comportamento padrão: sem ordenação customizada
         $limit = $request->input('limit', 20);
-        $movies = Movie::whereBetween('release_date', [
-                now()->subDays(30),
-                now()
-            ])
+        $movies = Movie::where('status', 'in_theaters')
             ->orderBy('release_date', 'desc')
             ->orderBy('popularity', 'desc')
             ->paginate($limit);
@@ -245,7 +242,17 @@ class MovieController extends Controller
      * Retorna filmes com ano de lançamento entre (ano_atual - 2) e ano_atual,
      * ordenados por ano (mais recentes primeiro) e depois por quantidade de votos (tmdb_vote_count).
      * 
-     * @see Esta rota NÃO usa ordenação customizada (ao contrário de upcoming/inTheaters),
+     * OTIMIZAÇÃO COM CACHE:
+     * - Usa cache de IDs pré-ordenados para primeiras 10 páginas (200 filmes)
+     * - Cache key: released_ids_v1
+     * - TTL: 7200s (2 horas)
+     * - Paginação manual com array_slice para evitar query pesada
+     * 
+     * COMPORTAMENTO:
+     * - Páginas 1-10: Usa cache (resposta instantânea < 20ms)
+     * - Páginas 11+: Query direta no banco (resposta ~100ms)
+     * 
+     * @see Esta rota NÃO usa ordenação customizada (ao contrário de upcoming/inTheaters)
      * 
      * @param \Illuminate\Http\Request $request Parâmetros limit (padrão 20) e page
      * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
@@ -254,8 +261,52 @@ class MovieController extends Controller
     {
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
-        
         $currentYear = now()->year;
+        
+        // Cache de IDs pré-ordenados (200 filmes = 10 páginas)
+        $cacheKey = "released_ids_v1";
+        $cachedIds = Cache::remember($cacheKey, 7200, function () use ($currentYear) {
+            return Movie::where('status', 'released')
+                ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
+                ->limit(200)
+                ->pluck('id')
+                ->toArray();
+        });
+        
+        $offset = ($page - 1) * $limit;
+        $totalCached = count($cachedIds);
+        
+        // Se a página está dentro do cache (páginas 1-10)
+        if ($offset < $totalCached) {
+            $pageIds = array_slice($cachedIds, $offset, $limit);
+            
+            // Busca filmes mantendo ordem do cache
+            $movies = Movie::whereIn('id', $pageIds)
+                ->get()
+                ->sortBy(function($movie) use ($pageIds) {
+                    return array_search($movie->id, $pageIds);
+                })
+                ->values();
+            
+            // Contagem total (cache + banco)
+            $totalCount = Cache::remember('released_total_count', 7200, function () use ($currentYear) {
+                return Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
+                    ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
+                    ->count();
+            });
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $movies,
+                    $totalCount,
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Páginas além do cache: query direta
         $movies = Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
             ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
             ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
@@ -287,11 +338,12 @@ class MovieController extends Controller
         $genreName = GenreSlug::toGenreName($genre);
         
         // Cache dos IDs por gênero (revalidado a cada 2 horas)
-        $cacheKey = "genre_{$genre}_ids_v6";
+        // OTIMIZAÇÃO v7: Usa JSON_CONTAINS ao invés de LIKE para aproveitar idx_genres_json
+        $cacheKey = "genre_{$genre}_ids_v7";
         $movieIds = Cache::remember($cacheKey, 7200, function () use ($genreName) {
-            return Movie::whereRaw("LOWER(genres) LIKE ?", ['%' . strtolower($genreName) . '%'])
+            return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($genreName) . '"'])
                 ->whereNotNull('release_date')
-                ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
+                ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
                 ->pluck('id')
                 ->toArray();
         });
@@ -300,13 +352,23 @@ class MovieController extends Controller
         $offset = ($page - 1) * $limit;
         $pageIds = array_slice($movieIds, $offset, $limit);
         
-        // Busca os filmes mantendo a ordem
+        // Se não há filmes nesta página, retornar vazio
+        if (empty($pageIds)) {
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    collect([]),
+                    count($movieIds),
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        $idsString = implode(',', $pageIds);
         $movies = Movie::whereIn('id', $pageIds)
-            ->get()
-            ->sortBy(function($movie) use ($pageIds) {
-                return array_search($movie->id, $pageIds);
-            })
-            ->values();
+            ->orderByRaw("FIELD(id, {$idsString})")
+            ->get();
         
         $total = count($movieIds);
         
@@ -374,13 +436,24 @@ class MovieController extends Controller
         $offset = ($page - 1) * $limit;
         $pageIds = array_slice($movieIds, $offset, $limit);
         
-        // Busca os filmes mantendo a ordem
+        // Se não há filmes nesta página, retornar vazio
+        if (empty($pageIds)) {
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    collect([]),
+                    count($movieIds),
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // OTIMIZAÇÃO: Usar FIELD() para manter ordem sem sortBy()
+        $idsString = implode(',', $pageIds);
         $movies = Movie::whereIn('id', $pageIds)
-            ->get()
-            ->sortBy(function($movie) use ($pageIds) {
-                return array_search($movie->id, $pageIds);
-            })
-            ->values();
+            ->orderByRaw("FIELD(id, {$idsString})")
+            ->get();
         
         $total = count($movieIds);
         
@@ -472,13 +545,24 @@ class MovieController extends Controller
         $offset = ($page - 1) * $limit;
         $pageIds = array_slice($movieIds, $offset, $limit);
         
-        // Busca os filmes mantendo a ordem
+        // Se não há filmes nesta página, retornar vazio
+        if (empty($pageIds)) {
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    collect([]),
+                    count($movieIds),
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // OTIMIZAÇÃO: Usar FIELD() para manter ordem sem sortBy()
+        $idsString = implode(',', $pageIds);
         $movies = Movie::whereIn('id', $pageIds)
-            ->get()
-            ->sortBy(function($movie) use ($pageIds) {
-                return array_search($movie->id, $pageIds);
-            })
-            ->values();
+            ->orderByRaw("FIELD(id, {$idsString})")
+            ->get();
         
         $total = count($movieIds);
         

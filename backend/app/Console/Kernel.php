@@ -12,8 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Aquecer cache das páginas de explorar a cada 2 horas
-        $schedule->command('cache:warmup-explore')->everyTwoHours();
+        $schedule->command('cache:generate')->everyTwoHours();
     }
 
     /**
@@ -22,6 +21,6 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         \App\Console\Commands\FetchMoviesTMDB::class,
         \App\Console\Commands\JustwatchBackfill::class,
-        \App\Console\Commands\WarmupExploreCache::class,
+        \App\Console\Commands\CacheMovies::class,
     ];
 }

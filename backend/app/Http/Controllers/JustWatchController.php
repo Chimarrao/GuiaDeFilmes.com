@@ -20,22 +20,16 @@ class JustWatchController extends Controller
         // Extrair ano da data de lançamento se fornecida
         $year = null;
         if ($releaseDate) {
-            // Se for formato completo (2012-10-16), pega os primeiros 4 dígitos
-            // Se for só ano (2012), usa direto
             $year = substr($releaseDate, 0, 4);
         }
 
-        // Caminho do script Python
         $scriptPath = base_path('scripts/justwatch.py');
 
-        // Detectar ambiente (Windows x Linux)
         $isWindows = strtoupper(substr(PHP_OS_FAMILY, 0, 3)) === 'WIN';
 
         if ($isWindows) {
-            // Ambiente local no Windows
-            $python = 'python'; // ou python3 dependendo da sua máquina
+            $python = 'python';
         } else {
-            // Ambiente Linux (servidor)
             $venvPython = base_path('venv/bin/python3');
 
             // Se o venv existir, usa ele — senão usa python3 global
@@ -49,14 +43,13 @@ class JustWatchController extends Controller
         // Montar comando
         $command = "$python \"$scriptPath\" \"$query\"";
         
-        // Adicionar IMDB ID se fornecido (mesmo que vazio para manter ordem dos parâmetros)
         if ($imdbId) {
             $command .= " \"$imdbId\"";
         } else {
-            $command .= " \"\""; // Parâmetro vazio para manter ordem
+            // Parâmetro vazio para manter ordem
+            $command .= " \"\"";
         }
-        
-        // Adicionar ano se fornecido
+
         if ($year) {
             $command .= " \"$year\"";
         }
@@ -76,17 +69,47 @@ class JustWatchController extends Controller
             return response()->json(['error' => 'Erro interno ao chamar Python'], 500);
         }
 
-        // Limpar e garantir UTF-8 válido
         $output = trim($output);
         
-        // Detectar e converter encoding se necessário
+        /**
+         * NORMALIZAÇÃO DE ENCODING UTF-8
+         * 
+         * PROBLEMA:
+         * Scripts Python no Windows podem retornar dados em encodings diferentes
+         * (Windows-1252, ISO-8859-1) mesmo quando configuramos UTF-8 no código.
+         * Isso causa caracteres corrompidos: "açúcar" vira "aÃ§Ãºcar".
+         * 
+         * SOLUÇÃO EM 3 ETAPAS:
+         * 
+         * 1. DETECTAR ENCODING INCORRETO:
+         *    mb_check_encoding() verifica se string já está em UTF-8 válido.
+         *    Se não estiver, precisamos converter.
+         * 
+         * 2. IDENTIFICAR ENCODING ORIGINAL:
+         *    mb_detect_encoding() tenta descobrir o encoding original:
+         *    - Windows-1252 (padrão Windows português/inglês)
+         *    - ISO-8859-1 (Latin1, comum em sistemas antigos)
+         *    - ASCII (subset de UTF-8, sem acentos)
+         * 
+         * 3. CONVERTER PARA UTF-8:
+         *    mb_convert_encoding($output, 'UTF-8', $encodingOriginal)
+         *    Converte da codificação original para UTF-8.
+         * 
+         * FALLBACK:
+         * Se não conseguir detectar, usa utf8_encode() (assume ISO-8859-1).
+         * 
+         * LIMPEZA FINAL:
+         * mb_convert_encoding($output, 'UTF-8', 'UTF-8') remove qualquer
+         * caractere inválido UTF-8 restante (bytes corrompidos).
+         * 
+         * RESULTADO:
+         * String 100% UTF-8 válida, pronta para json_decode().
+         */
         if (!mb_check_encoding($output, 'UTF-8')) {
-            // Tentar detectar o encoding
             $encoding = mb_detect_encoding($output, ['UTF-8', 'ISO-8859-1', 'Windows-1252', 'ASCII'], true);
             if ($encoding && $encoding !== 'UTF-8') {
                 $output = mb_convert_encoding($output, 'UTF-8', $encoding);
             } else {
-                // Força conversão de ISO-8859-1 para UTF-8 como fallback
                 $output = utf8_encode($output);
             }
         }

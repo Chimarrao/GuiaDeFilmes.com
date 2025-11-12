@@ -27,7 +27,9 @@ Route::get('/movies/decade/{decade}', [MovieController::class, 'byDecade']);
 Route::get('/movies/country/{countryCode}', [MovieController::class, 'byCountry']);
 Route::get('/movies/filter', [MovieController::class, 'filter']);
 Route::get('/movie/{slug}', [MovieController::class, 'show']);
-Route::get('/justwatch/search', [JustWatchController::class, 'search']);
+
+// JustWatch route (restrita a guiadefilmes.com e IP 163.176.145.249)
+Route::get('/justwatch/search', [JustWatchController::class, 'search'])->middleware('justwatch.restrict');
 
 // Movie Ordering routes
 Route::get('/movie-ordering/all', [MovieOrderingController::class, 'getAllOrderings']);

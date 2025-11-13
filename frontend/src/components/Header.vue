@@ -86,16 +86,10 @@
               <span>Nacionalidade</span>
             </a>
             <div class="navbar-dropdown">
-              <router-link to="/explorar/pais/BR" class="navbar-item" @click="closeMenu">🇧🇷 Brasil</router-link>
-              <router-link to="/explorar/pais/US" class="navbar-item" @click="closeMenu">🇺🇸 Estados Unidos</router-link>
-              <router-link to="/explorar/pais/GB" class="navbar-item" @click="closeMenu">�� Reino Unido</router-link>
-              <router-link to="/explorar/pais/FR" class="navbar-item" @click="closeMenu">🇫🇷 França</router-link>
-              <router-link to="/explorar/pais/DE" class="navbar-item" @click="closeMenu">�� Alemanha</router-link>
-              <router-link to="/explorar/pais/IT" class="navbar-item" @click="closeMenu">🇮🇹 Itália</router-link>
-              <router-link to="/explorar/pais/ES" class="navbar-item" @click="closeMenu">🇪🇸 Espanha</router-link>
-              <router-link to="/explorar/pais/JP" class="navbar-item" @click="closeMenu">🇯🇵 Japão</router-link>
-              <router-link to="/explorar/pais/KR" class="navbar-item" @click="closeMenu">�🇷 Coreia do Sul</router-link>
-              <router-link to="/explorar/pais/IN" class="navbar-item" @click="closeMenu">🇮🇳 Índia</router-link>
+              <router-link v-for="country in countries" :key="country.code" :to="`/explorar/pais/${country.code}`" class="navbar-item" @click="closeMenu">
+                <img :src="country.flag" :alt="`Bandeira ${country.name}`" class="country-flag-icon" />
+                <span>{{ country.name }}</span>
+              </router-link>
             </div>
           </div>
 
@@ -159,14 +153,19 @@
 
 <script>
 import { useRouter } from 'vue-router'
+import { countryFlags } from '../utils/countryFlags.js'
 
 export default {
   name: 'Header',
   setup() {
     const router = useRouter()
 
+    // Converte objeto para array
+    const countries = Object.values(countryFlags).slice(0, 10) // Top 10 países
+
     return {
-      router
+      router,
+      countries
     }
   },
   data() {
@@ -256,6 +255,15 @@ export default {
 
 .navbar-item {
   background-color: rgba(229, 9, 20, 0.1) !important;
+}
+
+.country-flag-icon {
+  width: 24px;
+  height: 18px;
+  border-radius: 2px;
+  object-fit: cover;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 @media (max-width: 1023px) {

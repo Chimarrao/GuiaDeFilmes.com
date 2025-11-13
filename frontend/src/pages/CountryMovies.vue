@@ -5,10 +5,8 @@
         <div class="container">
           <h1 class="title is-1">
             <span class="icon-text">
-              <span class="icon has-text-danger is-large">
-                <i class="fas fa-globe"></i>
-              </span>
-              <span>{{ getCountryTitle() }}</span>
+              <img :src="getCountryInfo().flag" :alt="`Bandeira ${getCountryInfo().name}`" class="country-flag-title" />
+              <span>Filmes {{ getCountryInfo().name }}</span>
             </span>
           </h1>
           <p class="subtitle">{{ getCountryDescription() }}</p>
@@ -175,6 +173,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
+import { countryFlags } from '../utils/countryFlags.js'
 import axios from 'axios'
 
 export default {
@@ -198,34 +197,22 @@ export default {
       minRating: ''
     })
 
-    const countryMap = {
-      'BR': { name: 'Brasil', code: 'BR', flag: '🇧🇷' },
-      'US': { name: 'Estados Unidos', code: 'US', flag: '🇺🇸' },
-      'GB': { name: 'Reino Unido', code: 'GB', flag: '🇬🇧' },
-      'FR': { name: 'França', code: 'FR', flag: '🇫🇷' },
-      'DE': { name: 'Alemanha', code: 'DE', flag: '🇩🇪' },
-      'IT': { name: 'Itália', code: 'IT', flag: '🇮🇹' },
-      'ES': { name: 'Espanha', code: 'ES', flag: '🇪🇸' },
-      'MX': { name: 'México', code: 'MX', flag: '🇲🇽' },
-      'CA': { name: 'Canadá', code: 'CA', flag: '🇨🇦' },
-      'JP': { name: 'Japão', code: 'JP', flag: '🇯🇵' },
-      'KR': { name: 'Coreia do Sul', code: 'KR', flag: '🇰🇷' },
-      'CN': { name: 'China', code: 'CN', flag: '🇨🇳' },
-      'IN': { name: 'Índia', code: 'IN', flag: '🇮🇳' },
-      'AU': { name: 'Austrália', code: 'AU', flag: '🇦🇺' },
-      'AR': { name: 'Argentina', code: 'AR', flag: '�🇷' },
-      'SE': { name: 'Suécia', code: 'SE', flag: '🇸🇪' },
-      'NO': { name: 'Noruega', code: 'NO', flag: '🇳🇴' }
-    }
-
     const getCountryInfo = () => {
       const countryCode = route.params.country.toUpperCase()
-      return countryMap[countryCode] || { name: countryCode, code: countryCode, flag: '🌍' }
+      const country = countryFlags[countryCode]
+      if (!country) {
+        return { 
+          name: countryCode, 
+          code: countryCode, 
+          flag: `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png` 
+        }
+      }
+      return country
     }
 
     const getCountryTitle = () => {
       const info = getCountryInfo()
-      return `${info.flag} Filmes ${info.name}`
+      return `Filmes ${info.name}`
     }
 
     const getCountryDescription = () => {
@@ -359,6 +346,7 @@ export default {
       totalPages,
       currentYear,
       filters,
+      getCountryInfo,
       getCountryTitle,
       getCountryDescription,
       applyFilters,
@@ -441,6 +429,16 @@ export default {
 
 .select select:hover {
   border-color: var(--primary-color);
+}
+
+.country-flag-title {
+  width: 48px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  margin-right: 12px;
+  vertical-align: middle;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .input {

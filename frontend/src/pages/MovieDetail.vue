@@ -1040,7 +1040,31 @@ export default {
         'it': 'Italiano',
         'ja': 'Japonês',
         'ko': 'Coreano',
-        'zh': 'Chinês'
+        'zh': 'Chinês',
+        'ar': 'Árabe',
+        'ru': 'Russo',
+        'hi': 'Hindi',
+        'nl': 'Holandês',
+        'sv': 'Sueco',
+        'no': 'Norueguês',
+        'da': 'Dinamarquês',
+        'fi': 'Finlandês',
+        'pl': 'Polonês',
+        'cs': 'Tcheco',
+        'hu': 'Húngaro',
+        'ro': 'Romeno',
+        'tr': 'Turco',
+        'th': 'Tailandês',
+        'vi': 'Vietnamita',
+        'he': 'Hebraico',
+        'id': 'Indonésio',
+        'ms': 'Malaio',
+        'uk': 'Ucraniano',
+        'el': 'Grego',
+        'fa': 'Persa',
+        'bn': 'Bengali',
+        'ta': 'Tâmil',
+        'te': 'Telugu'
       }
       return languages[movie.value.original_language] || movie.value.original_language || '-'
     }

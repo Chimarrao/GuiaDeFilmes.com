@@ -341,13 +341,16 @@ export default {
         lastSearchQuery.value = query
         hasSearched.value = true
         
+        // Atualiza URL com parâmetro de busca
         router.push({ query: { q: query } })
         
-        await store.fetchMovies()
-        const allMovies = store.movies
-        results.value = allMovies.filter(movie => 
-          movie.title.toLowerCase().includes(query.toLowerCase())
-        )
+        // Chama API backend com parâmetro q
+        const response = await api.get('/movies/search', { 
+          params: { q: query } 
+        })
+        
+        // Laravel retorna os dados em response.data.data (paginação)
+        results.value = response.data.data || []
       } catch (error) {
         console.error('Erro ao buscar filmes:', error)
         results.value = []

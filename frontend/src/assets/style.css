@@ -314,7 +314,7 @@ strong {
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
-    gap: 1rem;
+    gap: 1.5rem; /* Aumentado de 1rem para 1.5rem */
     padding: 1rem 0;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
@@ -333,6 +333,12 @@ strong {
   .horizontal-scroll .cast-card,
   .horizontal-scroll .crew-card {
     width: 120px;
+    margin-right: 0.5rem; /* Espaçamento extra para mobile */
+  }
+
+  .horizontal-scroll .crew-card:last-child,
+  .horizontal-scroll .cast-card:last-child {
+    margin-right: 0; /* Remove margem do último item */
   }
 
   /* Image Gallery in Horizontal Scroll */

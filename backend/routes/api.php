@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\JustWatchController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\MovieOrderingController;
+use App\Http\Controllers\CountryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +28,9 @@ Route::get('/movies/decade/{decade}', [MovieController::class, 'byDecade']);
 Route::get('/movies/country/{countryCode}', [MovieController::class, 'byCountry']);
 Route::get('/movies/filter', [MovieController::class, 'filter']);
 Route::get('/movie/{slug}', [MovieController::class, 'show']);
+
+// Rota de países
+Route::get('/countries', [CountryController::class, 'index']);
 
 // JustWatch route (restrita a guiadefilmes.com e IP 163.176.145.249)
 Route::get('/justwatch/search', [JustWatchController::class, 'search'])->middleware('justwatch.restrict');

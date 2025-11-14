@@ -519,6 +519,7 @@ class MovieController extends Controller
         $page = $request->input('page', 1);
         
         // Converte código do país para nome completo usando enum
+        //TODO: Falta pegar getExtinctCountriesMap do CountryController.php <- para países extintos
         $countryCode = strtoupper($countryCode);
         $countryEnum = CountryCode::tryFromCode($countryCode);
         

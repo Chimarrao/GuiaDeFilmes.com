@@ -77,6 +77,66 @@ enum CountryCode: string
     case MOROCCO = 'MA';
     case NIGERIA = 'NG';
     case KENYA = 'KE';
+    case ALGERIA = 'DZ';
+    case TUNISIA = 'TN';
+
+    // Europa do Sul
+    case GREECE = 'GR';
+    case CROATIA = 'HR';
+    case SERBIA = 'RS';
+    case SLOVENIA = 'SI';
+    case BULGARIA = 'BG';
+    case ALBANIA = 'AL';
+    case MACEDONIA = 'MK';
+    case BOSNIA = 'BA';
+    case MONTENEGRO = 'ME';
+    case KOSOVO = 'XK';
+    case CYPRUS = 'CY';
+    case MALTA = 'MT';
+
+    // Europa Central
+    case SLOVAKIA = 'SK';
+    case ESTONIA = 'EE';
+    case LATVIA = 'LV';
+    case LITHUANIA = 'LT';
+    case LUXEMBOURG = 'LU';
+
+    // América Central e Caribe
+    case CUBA = 'CU';
+    case PANAMA = 'PA';
+    case COSTA_RICA = 'CR';
+    case GUATEMALA = 'GT';
+    case EL_SALVADOR = 'SV';
+    case HONDURAS = 'HN';
+    case NICARAGUA = 'NI';
+    case BOLIVIA = 'BO';
+    case PARAGUAY = 'PY';
+    case ECUADOR = 'EC';
+    case DOMINICAN_REPUBLIC = 'DO';
+    case PUERTO_RICO = 'PR';
+    case JAMAICA = 'JM';
+    case TRINIDAD_TOBAGO = 'TT';
+    case BAHAMAS = 'BS';
+    case BARBADOS = 'BB';
+
+    // Ásia Central e Sul
+    case PAKISTAN = 'PK';
+    case BANGLADESH = 'BD';
+    case NEPAL = 'NP';
+    case SRI_LANKA = 'LK';
+    case MONGOLIA = 'MN';
+    case KAZAKHSTAN = 'KZ';
+    case UZBEKISTAN = 'UZ';
+    case ARMENIA = 'AM';
+    case GEORGIA = 'GE';
+    case AZERBAIJAN = 'AZ';
+
+    // Oriente Médio (continuação)
+    case IRAQ = 'IQ';
+    case LEBANON = 'LB';
+    case JORDAN = 'JO';
+    case PALESTINE = 'PS';
+    case AFGHANISTAN = 'AF';
 
     /**
      * Retorna o nome completo do país em inglês (como no TMDB)
@@ -159,6 +219,66 @@ enum CountryCode: string
             self::MOROCCO => 'Morocco',
             self::NIGERIA => 'Nigeria',
             self::KENYA => 'Kenya',
+            self::ALGERIA => 'Algeria',
+            self::TUNISIA => 'Tunisia',
+
+            // Europa do Sul
+            self::GREECE => 'Greece',
+            self::CROATIA => 'Croatia',
+            self::SERBIA => 'Serbia',
+            self::SLOVENIA => 'Slovenia',
+            self::BULGARIA => 'Bulgaria',
+            self::ALBANIA => 'Albania',
+            self::MACEDONIA => 'North Macedonia',
+            self::BOSNIA => 'Bosnia and Herzegovina',
+            self::MONTENEGRO => 'Montenegro',
+            self::KOSOVO => 'Kosovo',
+            self::CYPRUS => 'Cyprus',
+            self::MALTA => 'Malta',
+
+            // Europa Central
+            self::SLOVAKIA => 'Slovakia',
+            self::ESTONIA => 'Estonia',
+            self::LATVIA => 'Latvia',
+            self::LITHUANIA => 'Lithuania',
+            self::LUXEMBOURG => 'Luxembourg',
+
+            // América Central e Caribe
+            self::CUBA => 'Cuba',
+            self::PANAMA => 'Panama',
+            self::COSTA_RICA => 'Costa Rica',
+            self::GUATEMALA => 'Guatemala',
+            self::EL_SALVADOR => 'El Salvador',
+            self::HONDURAS => 'Honduras',
+            self::NICARAGUA => 'Nicaragua',
+            self::BOLIVIA => 'Bolivia',
+            self::PARAGUAY => 'Paraguay',
+            self::ECUADOR => 'Ecuador',
+            self::DOMINICAN_REPUBLIC => 'Dominican Republic',
+            self::PUERTO_RICO => 'Puerto Rico',
+            self::JAMAICA => 'Jamaica',
+            self::TRINIDAD_TOBAGO => 'Trinidad and Tobago',
+            self::BAHAMAS => 'Bahamas',
+            self::BARBADOS => 'Barbados',
+
+            // Ásia Central e Sul
+            self::PAKISTAN => 'Pakistan',
+            self::BANGLADESH => 'Bangladesh',
+            self::NEPAL => 'Nepal',
+            self::SRI_LANKA => 'Sri Lanka',
+            self::MONGOLIA => 'Mongolia',
+            self::KAZAKHSTAN => 'Kazakhstan',
+            self::UZBEKISTAN => 'Uzbekistan',
+            self::ARMENIA => 'Armenia',
+            self::GEORGIA => 'Georgia',
+            self::AZERBAIJAN => 'Azerbaijan',
+
+            // Oriente Médio (continuação)
+            self::IRAQ => 'Iraq',
+            self::LEBANON => 'Lebanon',
+            self::JORDAN => 'Jordan',
+            self::PALESTINE => 'Palestine',
+            self::AFGHANISTAN => 'Afghanistan',
         };
     }
 
@@ -243,6 +363,66 @@ enum CountryCode: string
             self::MOROCCO => 'Marrocos',
             self::NIGERIA => 'Nigéria',
             self::KENYA => 'Quênia',
+            self::ALGERIA => 'Argélia',
+            self::TUNISIA => 'Tunísia',
+
+            // Europa do Sul
+            self::GREECE => 'Grécia',
+            self::CROATIA => 'Croácia',
+            self::SERBIA => 'Sérvia',
+            self::SLOVENIA => 'Eslovênia',
+            self::BULGARIA => 'Bulgária',
+            self::ALBANIA => 'Albânia',
+            self::MACEDONIA => 'Macedônia do Norte',
+            self::BOSNIA => 'Bósnia e Herzegovina',
+            self::MONTENEGRO => 'Montenegro',
+            self::KOSOVO => 'Kosovo',
+            self::CYPRUS => 'Chipre',
+            self::MALTA => 'Malta',
+
+            // Europa Central
+            self::SLOVAKIA => 'Eslováquia',
+            self::ESTONIA => 'Estônia',
+            self::LATVIA => 'Letônia',
+            self::LITHUANIA => 'Lituânia',
+            self::LUXEMBOURG => 'Luxemburgo',
+
+            // América Central e Caribe
+            self::CUBA => 'Cuba',
+            self::PANAMA => 'Panamá',
+            self::COSTA_RICA => 'Costa Rica',
+            self::GUATEMALA => 'Guatemala',
+            self::EL_SALVADOR => 'El Salvador',
+            self::HONDURAS => 'Honduras',
+            self::NICARAGUA => 'Nicarágua',
+            self::BOLIVIA => 'Bolívia',
+            self::PARAGUAY => 'Paraguai',
+            self::ECUADOR => 'Equador',
+            self::DOMINICAN_REPUBLIC => 'República Dominicana',
+            self::PUERTO_RICO => 'Porto Rico',
+            self::JAMAICA => 'Jamaica',
+            self::TRINIDAD_TOBAGO => 'Trinidad e Tobago',
+            self::BAHAMAS => 'Bahamas',
+            self::BARBADOS => 'Barbados',
+
+            // Ásia Central e Sul
+            self::PAKISTAN => 'Paquistão',
+            self::BANGLADESH => 'Bangladesh',
+            self::NEPAL => 'Nepal',
+            self::SRI_LANKA => 'Sri Lanka',
+            self::MONGOLIA => 'Mongólia',
+            self::KAZAKHSTAN => 'Cazaquistão',
+            self::UZBEKISTAN => 'Uzbequistão',
+            self::ARMENIA => 'Armênia',
+            self::GEORGIA => 'Geórgia',
+            self::AZERBAIJAN => 'Azerbaijão',
+
+            // Oriente Médio (continuação)
+            self::IRAQ => 'Iraque',
+            self::LEBANON => 'Líbano',
+            self::JORDAN => 'Jordânia',
+            self::PALESTINE => 'Palestina',
+            self::AFGHANISTAN => 'Afeganistão',
         };
     }
 
@@ -284,5 +464,84 @@ enum CountryCode: string
             $countries[$case->value] = $case->fullName();
         }
         return $countries;
+    }
+
+    /**
+     * Tenta encontrar um país pelo nome em inglês (do banco de dados)
+     * Suporta países modernos, extintos e aliases
+     * 
+     * @param string $englishName Nome do país em inglês
+     * @return self|null
+     */
+    public static function findByEnglishName(string $englishName): ?self
+    {
+        $normalized = strtolower(trim($englishName));
+        
+        // Mapeamento de variações, sinônimos e países extintos
+        $nameMap = [
+            // Aliases modernos
+            'united states' => self::USA,
+            'united states of america' => self::USA,
+            'usa' => self::USA,
+            'united kingdom' => self::UNITED_KINGDOM,
+            'uk' => self::UNITED_KINGDOM,
+            'england' => self::UNITED_KINGDOM,
+            'scotland' => self::UNITED_KINGDOM,
+            'wales' => self::UNITED_KINGDOM,
+            'northern ireland' => self::UNITED_KINGDOM,
+            'south korea' => self::SOUTH_KOREA,
+            'korea' => self::SOUTH_KOREA,
+            'republic of korea' => self::SOUTH_KOREA,
+            'netherlands' => self::NETHERLANDS,
+            'holland' => self::NETHERLANDS,
+            'czechia' => self::CZECH_REPUBLIC,
+            'north macedonia' => self::MACEDONIA,
+            'bosnia and herzegovina' => self::BOSNIA,
+            'trinidad and tobago' => self::TRINIDAD_TOBAGO,
+            
+            // Nomes antigos que foram atualizados
+            'libyan arab jamahiriya' => self::EGYPT, // Líbia não está no enum, usando Egito como proxy
+            'macedonia' => self::MACEDONIA,
+            'macao' => self::CHINA, // Macau é região administrativa da China
+            "lao people's democratic republic" => self::THAILAND, // Laos não está no enum
+            'holy see' => self::ITALY, // Vaticano não está no enum, usando Itália
+        ];
+        
+        if (isset($nameMap[$normalized])) {
+            return $nameMap[$normalized];
+        }
+        
+        // Procura pelo nome oficial em inglês
+        foreach (self::cases() as $country) {
+            if (strtolower($country->fullName()) === $normalized) {
+                return $country;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Retorna URL da bandeira do país
+     * 
+     * @return string
+     */
+    public function getFlagUrl(): string
+    {
+        return 'https://flagcdn.com/w40/' . strtolower($this->value) . '.png';
+    }
+
+    /**
+     * Retorna array com todos os dados do país
+     * 
+     * @return array
+     */
+    public function toArray(): array
+    {
+        return [
+            'code' => $this->value,
+            'name' => $this->label(),
+            'flag' => $this->getFlagUrl(),
+        ];
     }
 }

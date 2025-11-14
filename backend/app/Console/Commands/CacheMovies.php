@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Models\Movie;
 use App\Enums\{DecadeRange, CountryCode, GenreSlug};
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,9 @@ class CacheMovies extends Command
         
         // ENDPOINT: /movies/country/{countryCode}
         $this->warmupCountries();
+        
+        // ENDPOINT: /countries (lista de países com contagem)
+        $this->warmupCountriesList();
         
         $this->newLine();
         $this->info('✅ Cache completo gerado com sucesso!');
@@ -363,5 +367,68 @@ class CacheMovies extends Command
         }
         
         $this->info("  📊 Total: {$totalMovies} registros em cache ({$total} países)");
+    }
+
+    /**
+     * Cache da lista de países com contagem de filmes
+     * Endpoint: GET /countries
+     * 
+     * OTIMIZAÇÃO:
+     * - Cache da query completa de países
+     * - Inclui mapeamento com CountryCode enum
+     * - TTL: 3600s (1 hora)
+     */
+    private function warmupCountriesList(): void
+    {
+        $this->info('🗺️ Gerando LISTA DE PAÍSES (com contagem)...');
+        
+        $cacheKey = 'countries_with_counts_v2';
+        
+        try {
+            $countries = Cache::remember($cacheKey, 3600, function () {
+                $results = DB::select(<<<SQL
+                    SELECT 
+                        country,
+                        COUNT(*) AS total_movies
+                    FROM (
+                        SELECT 
+                            m.id AS movie_id,
+                            JSON_UNQUOTE(JSON_EXTRACT(j.value, '$.name')) AS country
+                        FROM movies m,
+                             JSON_TABLE(m.production_countries, '$[*]' COLUMNS (
+                                 value JSON PATH '$'
+                             )) AS j
+                    ) AS extracted
+                    WHERE country IS NOT NULL AND country <> ''
+                    GROUP BY country
+                    ORDER BY total_movies DESC, country
+                SQL);
+
+                // Mapeia os resultados do banco com os dados do enum
+                $mapped = [];
+                foreach ($results as $result) {
+                    $countryEnum = CountryCode::findByEnglishName($result->country);
+                    
+                    if ($countryEnum) {
+                        $mapped[] = [
+                            'code' => $countryEnum->value,
+                            'name' => $countryEnum->label(),
+                            'flag' => $countryEnum->getFlagUrl(),
+                            'count' => (int) $result->total_movies,
+                        ];
+                    }
+                }
+
+                return $mapped;
+            });
+            
+            $total = count($countries);
+            $totalMovies = array_sum(array_column($countries, 'count'));
+            
+            $this->info("  ✓ Cache: {$cacheKey}");
+            $this->info("  📊 {$total} países mapeados, {$totalMovies} filmes catalogados");
+        } catch (\Exception $e) {
+            $this->error("  ✗ ERRO ao gerar cache de países: " . $e->getMessage());
+        }
     }
 }

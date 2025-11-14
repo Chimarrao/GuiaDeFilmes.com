@@ -1,6 +1,7 @@
 <template>
   <div class="country-movies">
-    <section class="hero is-dark">
+    <section class="hero is-medium is-dark">
+      <div class="hero-background" :style="{ backgroundImage: `url(https://flagcdn.com/w640/${getCountryInfo().code.toLowerCase()}.png)` }"></div>
       <div class="hero-body">
         <div class="container">
           <h1 class="title is-1">
@@ -75,6 +76,8 @@
                   <div class="select is-fullwidth">
                     <select v-model="filters.minRating">
                       <option value="">Todas</option>
+                      <option value="5">5+</option>
+                      <option value="6">6+</option>
                       <option value="7">7+</option>
                       <option value="8">8+</option>
                       <option value="9">9+</option>
@@ -173,9 +176,17 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '../composables/useHead.js'
 import MovieCard from '../components/MovieCard.vue'
-import { countryFlags } from '../utils/countryFlags.js'
+import { resolveCountry } from '../utils/countryFlags.js'
 import axios from 'axios'
 
+/**
+ * Componente CountryMovies
+ * 
+ * Exibe filmes filtrados por país de produção com filtros avançados
+ * e paginação. Permite filtrar por gênero, ano e nota mínima.
+ * 
+ * @component
+ */
 export default {
   name: 'CountryMovies',
   components: {
@@ -197,35 +208,48 @@ export default {
       minRating: ''
     })
 
+    /**
+     * Obtém informações do país a partir do código na URL
+     * Usa resolveCountry para suportar países modernos e históricos
+     * 
+     * @returns {Object} Objeto com name, code e flag do país
+     */
     const getCountryInfo = () => {
       const countryCode = route.params.country.toUpperCase()
-      const country = countryFlags[countryCode]
-      if (!country) {
-        return { 
-          name: countryCode, 
-          code: countryCode, 
-          flag: `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png` 
-        }
-      }
-      return country
+      return resolveCountry(countryCode, null)
     }
 
+    /**
+     * Retorna o título da página formatado com o nome do país
+     * 
+     * @returns {string} Título no formato "Filmes [País]"
+     */
     const getCountryTitle = () => {
       const info = getCountryInfo()
-      return `Filmes ${info.name}`
+      return `Filmes ${info.name}`;
     }
 
+    /**
+     * Retorna a descrição da página com o nome do país
+     * 
+     * @returns {string} Descrição no formato "Explore os melhores filmes de [País]"
+     */
     const getCountryDescription = () => {
       const info = getCountryInfo()
-      return `Explore os melhores filmes de ${info.name}`
+      return `Explore os melhores filmes de ${info.name}`;
     }
 
+    /**
+     * Carrega filmes do país com filtros aplicados
+     * 
+     * @param {number} page - Número da página para paginação
+     */
     const loadMovies = async (page = 1) => {
       try {
         if (page === 1) {
-          loading.value = true
+          loading.value = true;
         } else {
-          isLoadingMore.value = true
+          isLoadingMore.value = true;
         }
         
         const countryInfo = getCountryInfo()
@@ -236,36 +260,55 @@ export default {
         }
 
         // Adicionar filtros se existirem
-        if (filters.value.genre) params.genre = filters.value.genre
-        if (filters.value.yearFrom) params.yearFrom = filters.value.yearFrom
-        if (filters.value.yearTo) params.yearTo = filters.value.yearTo
-        if (filters.value.minRating) params.minRating = filters.value.minRating
+        if (filters.value.genre) {
+          params.genre = filters.value.genre
+        }
+        if (filters.value.yearFrom) {
+          params.yearFrom = filters.value.yearFrom
+        }
+        if (filters.value.yearTo) {
+          params.yearTo = filters.value.yearTo
+        }
+        if (filters.value.minRating) {
+          params.minRating = filters.value.minRating
+        }
         
         const response = await axios.get(`/api/movies/country/${countryInfo.code}`, { params })
         
-        movies.value = response.data.data
-        currentPage.value = response.data.meta?.current_page || response.data.current_page || 1
-        totalPages.value = response.data.meta?.last_page || response.data.last_page || 1
+        movies.value = response.data.data;
+        currentPage.value = response.data.meta?.current_page || response.data.current_page || 1;
+        totalPages.value = response.data.meta?.last_page || response.data.last_page || 1;
       } catch (error) {
         console.error('Erro ao carregar filmes:', error)
       } finally {
-        loading.value = false
-        isLoadingMore.value = false
+        loading.value = false;
+        isLoadingMore.value = false;
       }
     }
 
+    /**
+     * Navega para uma página específica da paginação
+     * 
+     * @param {number} page - Número da página destino
+     */
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
-        router.push({ query: { ...route.query, page } })
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        loadMovies(page)
+        router.push({ query: { ...route.query, page } });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        loadMovies(page);
       }
     }
 
+    /**
+     * Calcula os números de página a serem exibidos na paginação
+     * com reticências quando necessário
+     * 
+     * @returns {Array} Array com números de página e strings '...' para reticências
+     */
     const getPageNumbers = () => {
-      const pages = []
-      const current = currentPage.value
-      const total = totalPages.value
+      const pages = [];
+      const current = currentPage.value;
+      const total = totalPages.value;
       
       if (total <= 7) {
         for (let i = 1; i <= total; i++) {
@@ -273,31 +316,43 @@ export default {
         }
       } else {
         if (current <= 4) {
-          for (let i = 1; i <= 5; i++) pages.push(i)
-          pages.push('...')
-          pages.push(total)
+          for (let i = 1; i <= 5; i++) {
+            pages.push(i);
+          }
+          pages.push('...');
+          pages.push(total);
         } else if (current >= total - 3) {
-          pages.push(1)
-          pages.push('...')
-          for (let i = total - 4; i <= total; i++) pages.push(i)
+          pages.push(1);
+          pages.push('...');
+          for (let i = total - 4; i <= total; i++) {
+            pages.push(i);
+          }
         } else {
-          pages.push(1)
-          pages.push('...')
-          for (let i = current - 1; i <= current + 1; i++) pages.push(i)
-          pages.push('...')
-          pages.push(total)
+          pages.push(1);
+          pages.push('...');
+          for (let i = current - 1; i <= current + 1; i++) {
+            pages.push(i);
+          }
+          pages.push('...');
+          pages.push(total);
         }
       }
       
       return pages
     }
 
+    /**
+     * Aplica os filtros selecionados e recarrega a lista de filmes
+     */
     const applyFilters = () => {
-      currentPage.value = 1
-      router.push({ query: { page: 1 } })
-      loadMovies(1)
+      currentPage.value = 1;
+      router.push({ query: { page: 1 } });
+      loadMovies(1);
     }
 
+    /**
+     * Limpa todos os filtros e recarrega a lista completa de filmes
+     */
     const clearFilters = () => {
       filters.value = {
         genre: '',
@@ -305,37 +360,40 @@ export default {
         yearTo: '',
         minRating: ''
       }
-      currentPage.value = 1
-      router.push({ query: {} })
-      loadMovies(1)
+      currentPage.value = 1;
+      router.push({ query: {} });
+      loadMovies(1);
     }
 
+    /**
+     * Atualiza as meta tags da página para SEO com informações do país
+     */
     const updateMetaTags = () => {
-      const info = getCountryInfo()
+      const info = getCountryInfo();
       useHead({
-        title: `${info.flag} Filmes ${info.name} - Guia de Filmes`,
+        title: `Filmes ${info.name} - Guia de Filmes`,
         meta: [
           { name: 'description', content: `Descubra os melhores filmes de ${info.name}. Veja títulos populares, clássicos e lançados em alta do cinema ${info.name.toLowerCase()}.` },
           { name: 'keywords', content: `filmes ${info.name.toLowerCase()}, cinema ${info.name.toLowerCase()}, filmes, ${info.name}` },
-          { property: 'og:title', content: `${info.flag} Filmes ${info.name} - Guia de Filmes` },
+          { property: 'og:title', content: `Filmes ${info.name} - Guia de Filmes` },
           { property: 'og:description', content: `Descubra os melhores filmes de ${info.name}` }
         ]
       })
     }
 
     onMounted(() => {
-      updateMetaTags()
-      const pageFromUrl = parseInt(route.query.page) || 1
-      currentPage.value = pageFromUrl
-      loadMovies(pageFromUrl)
+      updateMetaTags();
+      const pageFromUrl = parseInt(route.query.page) || 1;
+      currentPage.value = pageFromUrl;
+      loadMovies(pageFromUrl);
     })
 
     watch(() => route.params.country, () => {
-      updateMetaTags()
-      currentPage.value = 1
-      movies.value = []
-      router.push({ query: {} })
-      clearFilters()
+      updateMetaTags();
+      currentPage.value = 1;
+      movies.value = [];
+      router.push({ query: {} });
+      clearFilters();
     })
 
     return {
@@ -359,16 +417,34 @@ export default {
 </script>
 
 <style scoped>
+/* Container principal da página de filmes por país */
 .country-movies {
   min-height: 100vh;
 }
 
+/* Hero section com background da bandeira do país */
 .hero {
-  background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
   position: relative;
   overflow: hidden;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
+/* Background da bandeira do país */
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) brightness(0.4);
+  transform: scale(1.1);
+  z-index: 0;
+}
+
+/* Overlay escuro sobre a bandeira para melhor legibilidade do texto */
 .hero::before {
   content: '';
   position: absolute;
@@ -376,16 +452,17 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(229, 9, 20, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.1) 0%, transparent 50%);
-}
-
-.hero-body {
-  position: relative;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.5));
   z-index: 1;
 }
 
+/* Posiciona o conteúdo acima do overlay */
+.hero-body {
+  position: relative;
+  z-index: 2;
+}
+
+/* Estado vazio quando nenhum filme é encontrado */
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -402,6 +479,7 @@ export default {
   font-size: 1.5rem;
 }
 
+/* Spinner de loading - animação circular */
 .spinner {
   border: 4px solid rgba(229, 9, 20, 0.1);
   border-left-color: #e50914;
@@ -412,15 +490,18 @@ export default {
   margin: 2rem auto;
 }
 
+/* Animação de rotação do spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
+/* Estilo para página atual na paginação */
 .pagination-link.is-current {
   background-color: var(--primary-color);
   border-color: var(--primary-color);
 }
 
+/* Estilos para selects (filtros) */
 .select select {
   background-color: var(--background-dark);
   color: white;
@@ -431,6 +512,7 @@ export default {
   border-color: var(--primary-color);
 }
 
+/* Bandeira do país no título da página */
 .country-flag-title {
   width: 48px;
   height: 36px;
@@ -441,6 +523,7 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Inputs de texto (filtros de ano e nota) */
 .input {
   background-color: var(--background-dark);
   color: white;
@@ -455,12 +538,13 @@ export default {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Pagination Styles */
+/* Estilos de paginação */
 .pagination {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
 
+/* Botões de paginação - estado normal */
 .pagination-previous,
 .pagination-next,
 .pagination-link {
@@ -470,6 +554,7 @@ export default {
   transition: all 0.3s ease;
 }
 
+/* Botões de paginação - estado hover */
 .pagination-previous:hover:not(:disabled),
 .pagination-next:hover:not(:disabled),
 .pagination-link:hover:not(.is-current) {
@@ -479,6 +564,7 @@ export default {
   transform: translateY(-2px);
 }
 
+/* Página atual - destaque vermelho */
 .pagination-link.is-current {
   background-color: #dc143c;
   border-color: #dc143c;
@@ -486,6 +572,7 @@ export default {
   font-weight: 600;
 }
 
+/* Botões de paginação - estado desabilitado */
 .pagination-previous:disabled,
 .pagination-next:disabled {
   background-color: #1a1a1a;
@@ -495,6 +582,7 @@ export default {
   opacity: 0.5;
 }
 
+/* Reticências entre números de página */
 .pagination-ellipsis {
   color: #888;
 }

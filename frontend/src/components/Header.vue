@@ -160,8 +160,19 @@ export default {
   setup() {
     const router = useRouter()
 
-    // Converte objeto para array
-    const countries = Object.values(countryFlags).slice(0, 10) // Top 10 países
+    // 10 países mais relevantes fixos (incluindo Brasil)
+    const countries = [
+      countryFlags['US'],  // Estados Unidos
+      countryFlags['BR'],  // Brasil
+      countryFlags['GB'],  // Reino Unido
+      countryFlags['FR'],  // França
+      countryFlags['DE'],  // Alemanha
+      countryFlags['IT'],  // Itália
+      countryFlags['ES'],  // Espanha
+      countryFlags['JP'],  // Japão
+      countryFlags['CA'],  // Canadá
+      countryFlags['KR']   // Coreia do Sul
+    ]
 
     return {
       router,

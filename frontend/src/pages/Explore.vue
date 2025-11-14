@@ -13,6 +13,19 @@
 
     <section class="section">
       <div class="container">
+        <!-- Advanced Filters Section -->
+        <div class="mb-6">
+          <h2 class="title is-3 mb-4 has-text-white">
+            <i class="fas fa-filter"></i> Busca Avançada
+          </h2>
+          <router-link to="/buscar">
+            <Button class="p-button-danger p-button-lg w-full">
+              <i class="fas fa-sliders mr-2"></i>
+              <span>Buscar com Filtros Avançados</span>
+            </Button>
+          </router-link>
+        </div>
+
         <!-- Genres Section -->
         <div class="mb-6">
           <h2 class="title is-3 mb-4 has-text-white">
@@ -63,30 +76,28 @@
             <i class="fas fa-globe"></i> Nacionalidades
           </h2>
           <div class="columns is-multiline is-mobile">
-            <div v-for="country in countries" :key="country.code" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
+            <div v-for="country in displayedCountries" :key="country.code" class="column is-one-quarter-desktop is-one-third-tablet is-half-mobile">
               <router-link :to="`/explorar/pais/${country.code}`" class="country-card">
                 <div class="card">
                   <div class="card-content has-text-centered">
                     <img :src="country.flag" :alt="`Bandeira ${country.name}`" class="country-flag mb-2" />
                     <h3 class="title is-5 has-text-white">{{ country.name }}</h3>
+                    <p class="subtitle is-6 has-text-grey-light" v-if="country.count">{{ country.count }} filmes</p>
                   </div>
                 </div>
               </router-link>
             </div>
           </div>
-        </div>
-
-        <!-- Advanced Filters Section -->
-        <div>
-          <h2 class="title is-3 mb-4 has-text-white">
-            <i class="fas fa-filter"></i> Busca Avançada
-          </h2>
-          <router-link to="/buscar">
-            <Button class="p-button-danger p-button-lg w-full">
-              <i class="fas fa-sliders mr-2"></i>
-              <span>Buscar com Filtros Avançados</span>
-            </Button>
-          </router-link>
+          
+          <!-- Botão para mostrar mais países -->
+          <div v-if="hiddenCountriesCount > 0 && !showAllCountries" class="has-text-centered mt-4">
+            <button @click="showAllCountries = true" class="button is-danger is-outlined">
+              <span class="icon">
+                <i class="fas fa-plus"></i>
+              </span>
+              <span>Mostrar mais {{ hiddenCountriesCount }} países</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -94,11 +105,18 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useHead } from '../composables/useHead.js'
+import axios from 'axios'
+import Card from 'primevue/card'
+import Button from 'primevue/button'
 
 export default {
   name: 'Explore',
+  components: {
+    Card,
+    Button
+  },
   setup() {
     useHead({
       title: 'Explorar - Guia de Filmes',
@@ -141,36 +159,57 @@ export default {
       { id: 12, name: 'Pré-1920', slug: 'pre-1920', icon: 'fa-calendar-days' },
     ])
 
-    const countries = ref([
-      { code: 'BR', name: 'Brasil', flag: 'https://flagcdn.com/w40/br.png' },
-      { code: 'US', name: 'Estados Unidos', flag: 'https://flagcdn.com/w40/us.png' },
-      { code: 'GB', name: 'Reino Unido', flag: 'https://flagcdn.com/w40/gb.png' },
-      { code: 'FR', name: 'França', flag: 'https://flagcdn.com/w40/fr.png' },
-      { code: 'DE', name: 'Alemanha', flag: 'https://flagcdn.com/w40/de.png' },
-      { code: 'IT', name: 'Itália', flag: 'https://flagcdn.com/w40/it.png' },
-      { code: 'ES', name: 'Espanha', flag: 'https://flagcdn.com/w40/es.png' },
-      { code: 'JP', name: 'Japão', flag: 'https://flagcdn.com/w40/jp.png' },
-      { code: 'KR', name: 'Coreia do Sul', flag: 'https://flagcdn.com/w40/kr.png' },
-      { code: 'CN', name: 'China', flag: 'https://flagcdn.com/w40/cn.png' },
-      { code: 'IN', name: 'Índia', flag: 'https://flagcdn.com/w40/in.png' },
-      { code: 'AU', name: 'Austrália', flag: 'https://flagcdn.com/w40/au.png' },
-      { code: 'CA', name: 'Canadá', flag: 'https://flagcdn.com/w40/ca.png' },
-      { code: 'MX', name: 'México', flag: 'https://flagcdn.com/w40/mx.png' },
-      { code: 'AR', name: 'Argentina', flag: 'https://flagcdn.com/w40/ar.png' },
-      { code: 'SE', name: 'Suécia', flag: 'https://flagcdn.com/w40/se.png' },
-      { code: 'NO', name: 'Noruega', flag: 'https://flagcdn.com/w40/no.png' }
-    ])
+    const countries = ref([])
+    const showAllCountries = ref(false)
+
+    /**
+     * Carrega países do backend com contagem de filmes
+     */
+    const loadCountries = async () => {
+      try {
+        const response = await axios.get('/api/countries')
+        countries.value = response.data
+      } catch (error) {
+        console.error('Erro ao carregar países:', error)
+      }
+    }
+
+    /**
+     * Retorna países a exibir com base no filtro
+     */
+    const displayedCountries = computed(() => {
+      if (showAllCountries.value) {
+        return countries.value
+      }
+      // Exibe países com 100+ filmes
+      return countries.value.filter(c => c.count >= 100)
+    })
+
+    /**
+     * Conta quantos países estão ocultos
+     */
+    const hiddenCountriesCount = computed(() => {
+      return countries.value.length - displayedCountries.value.length
+    })
+
+    onMounted(() => {
+      loadCountries()
+    })
 
     return {
       genres,
       decades,
-      countries
+      countries,
+      displayedCountries,
+      showAllCountries,
+      hiddenCountriesCount
     }
   }
 }
 </script>
 
 <style scoped>
+/* Cards de gênero, década e país - comportamento base */
 .genre-card,
 .decade-card,
 .country-card {
@@ -179,6 +218,7 @@ export default {
   cursor: pointer;
 }
 
+/* Efeito hover nos cards - elevação e sombra vermelha */
 .genre-card:hover,
 .decade-card:hover,
 .country-card:hover {
@@ -186,6 +226,7 @@ export default {
   box-shadow: 0 10px 30px rgba(229, 9, 20, 0.3);
 }
 
+/* Estilo interno dos cards - gradiente escuro e borda */
 .genre-card .card,
 .decade-card .card,
 .country-card .card {
@@ -198,12 +239,14 @@ export default {
   justify-content: center;
 }
 
+/* Destaque da borda ao passar o mouse */
 .genre-card:hover .card,
 .decade-card:hover .card,
 .country-card:hover .card {
   border-color: #e50914;
 }
 
+/* Bandeiras dos países nos cards */
 .country-flag {
   width: 40px;
   height: 30px;
@@ -211,6 +254,7 @@ export default {
   object-fit: cover;
 }
 
+/* Conteúdo interno dos cards */
 .card-content {
   padding: 2rem 1rem;
 }

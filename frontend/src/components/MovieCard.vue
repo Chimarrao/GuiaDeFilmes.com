@@ -57,7 +57,7 @@
 
 <script>
 import RatingBadge from './RatingBadge.vue'
-import { getCountryCode, translateCountry } from '../utils/translations.js'
+import { resolveCountry } from '../utils/countryFlags.js'
 
 export default {
   name: 'MovieCard',
@@ -92,25 +92,24 @@ export default {
       }
       
       const flags = []
-      const seenCodes = new Set()
+      const seenNames = new Set()
       
       for (const country of this.movie.production_countries) {
         const countryName = typeof country === 'string' ? country : country.name
         
-        if (!countryName) {
+        if (!countryName || seenNames.has(countryName)) {
           continue
         }
         
-        const code = getCountryCode(countryName)
+        seenNames.add(countryName)
         
-        // Só adiciona se tiver código e não for duplicado
-        if (code && !seenCodes.has(code)) {
-          seenCodes.add(code)
-          flags.push({
-            name: translateCountry(countryName),
-            url: `https://flagcdn.com/w40/${code.toLowerCase()}.png`
-          })
-        }
+        // Usa resolveCountry para suportar países modernos e extintos
+        const resolved = resolveCountry(null, countryName)
+        
+        flags.push({
+          name: resolved.name,
+          url: resolved.flag
+        })
       }
       
       return flags

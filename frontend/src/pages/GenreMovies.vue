@@ -1,6 +1,9 @@
 <template>
   <div class="genre-movies">
+    <!-- Hero com background fixo -->
     <section class="hero is-medium is-dark">
+      <!-- Background fixo com imagem do gênero -->
+      <div v-if="genreBackgroundImage" class="genre-background" :style="{ backgroundImage: `url(${genreBackgroundImage})` }"></div>
       <div class="hero-body">
         <div class="container has-text-centered">
           <p class="subtitle mb-2">
@@ -203,11 +206,40 @@ export default {
     const genreName = computed(() => genresMap[genreSlug.value]?.name || genreSlug.value)
     const genreIcon = computed(() => genresMap[genreSlug.value]?.icon || 'fa-film')
 
+    /**
+     * Mapeamento de imagens de fundo disponíveis para cada gênero
+     * Apenas gêneros com imagens convertidas para WebP são listados
+     */
+    const genreBackgrounds = {
+      'acao': '/src/assets/images/acao.webp',
+      'animacao': '/src/assets/images/animacao.webp',
+      'aventura': '/src/assets/images/aventura.webp',
+      'comedia': '/src/assets/images/comedia.webp',
+      'documentario': '/src/assets/images/documentario.webp',
+      'drama': '/src/assets/images/drama.webp',
+      'fantasia': '/src/assets/images/fantasia.webp',
+      'ficcao-cientifica': '/src/assets/images/ficcao-cientifica.webp',
+      'guerra': '/src/assets/images/guerra.webp',
+      'romance': '/src/assets/images/romance.webp',
+      'suspense': '/src/assets/images/suspense.webp',
+      'terror': '/src/assets/images/terror.webp',
+    }
+
+    /**
+     * Retorna a URL da imagem de fundo para o gênero atual
+     * @returns {string|null} URL da imagem ou null se não houver
+     */
+    const genreBackgroundImage = computed(() => genreBackgrounds[genreSlug.value] || null)
+
     useHead({
       title: `${genreName.value} - Explorar - Guia de Filmes`,
       description: `Descubra os filmes mais populares do gênero ${genreName.value}`,
     })
 
+    /**
+     * Busca filmes do gênero atual com filtros aplicados
+     * @param {number} page - Número da página a ser carregada
+     */
     const fetchMovies = async (page = 1) => {
       try {
         if (page === 1) {
@@ -222,7 +254,7 @@ export default {
           genre: genreSlug.value
         }
 
-        // Adicionar filtros se existirem
+        // Adicionar filtros opcionais aos parâmetros
         if (filters.value.yearFrom) params.yearFrom = filters.value.yearFrom
         if (filters.value.yearTo) params.yearTo = filters.value.yearTo
         if (filters.value.minRating) params.minRating = filters.value.minRating
@@ -240,11 +272,17 @@ export default {
       }
     }
 
+    /**
+     * Aplica os filtros selecionados e recarrega a primeira página
+     */
     const applyFilters = () => {
       currentPage.value = 1
       fetchMovies(1)
     }
 
+    /**
+     * Limpa todos os filtros e recarrega a primeira página
+     */
     const clearFilters = () => {
       filters.value = {
         yearFrom: '',
@@ -255,6 +293,10 @@ export default {
       fetchMovies(1)
     }
 
+    /**
+     * Navega para uma página específica
+     * @param {number} page - Número da página de destino
+     */
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         router.push({ query: { ...route.query, page } })
@@ -263,6 +305,10 @@ export default {
       }
     }
 
+    /**
+     * Gera array de números de página para paginação com elipses
+     * @returns {Array} Array com números de páginas e elipses ('...')
+     */
     const getPageNumbers = () => {
       const pages = []
       const current = currentPage.value
@@ -314,6 +360,7 @@ export default {
       totalPages,
       genreName,
       genreIcon,
+      genreBackgroundImage,
       goToPage,
       getPageNumbers,
       filters,
@@ -326,40 +373,85 @@ export default {
 </script>
 
 <style scoped>
-.genre-movies-page {
+/* Container principal da página de filmes por gênero */
+.genre-movies {
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
+/* Hero com overflow para conter o background */
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+  z-index: 2;
+}
+
+/* Background com imagem do gênero (blur + escurecimento) */
+.genre-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(8px) brightness(0.4);
+  z-index: 0;
+}
+
+/* Hero body acima do background */
+.hero-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* Seções acima do background */
+.filters-section,
+.section {
+  position: relative;
+  z-index: 2;
+}
+
+/* Seção de filtros com fundo semi-transparente */
 .filters-section {
   background-color: rgba(0, 0, 0, 0.3);
   padding: 2rem 0;
   margin-bottom: 2rem;
 }
 
+/* Select customizado com tema escuro */
 .select select {
   background-color: #2b2b2b;
   color: white;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Hover do select com cor primária */
 .select select:hover {
   border-color: #dc143c;
 }
 
+/* Input customizado com tema escuro */
 .input {
   background-color: #2b2b2b;
   color: white;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Estados hover e focus do input */
 .input:hover, .input:focus {
   border-color: #dc143c;
 }
 
+/* Placeholder com opacidade reduzida */
 .input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* Spinner de loading animado */
 .spinner {
   border: 4px solid rgba(229, 9, 20, 0.1);
   border-left-color: #e50914;
@@ -370,27 +462,31 @@ export default {
   margin: 0 auto;
 }
 
+/* Animação de rotação infinita do spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
+/* Estado vazio quando não há filmes */
 .empty-state {
   text-align: center;
   padding: 5rem 2rem;
 }
 
+/* Ícone grande do estado vazio */
 .empty-state .icon {
   font-size: 4rem;
   color: #666;
   margin-bottom: 1rem;
 }
 
-/* Pagination Styles */
+/* Estilos de paginação */
 .pagination {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
 
+/* Botões de paginação com tema escuro */
 .pagination-previous,
 .pagination-next,
 .pagination-link {
@@ -400,6 +496,7 @@ export default {
   transition: all 0.3s ease;
 }
 
+/* Hover nos botões de paginação com elevação */
 .pagination-previous:hover:not(:disabled),
 .pagination-next:hover:not(:disabled),
 .pagination-link:hover:not(.is-current) {
@@ -409,6 +506,7 @@ export default {
   transform: translateY(-2px);
 }
 
+/* Página atual destacada */
 .pagination-link.is-current {
   background-color: #dc143c;
   border-color: #dc143c;
@@ -416,6 +514,7 @@ export default {
   font-weight: 600;
 }
 
+/* Botões desabilitados */
 .pagination-previous:disabled,
 .pagination-next:disabled {
   background-color: #1a1a1a;
@@ -425,6 +524,7 @@ export default {
   opacity: 0.5;
 }
 
+/* Elipses da paginação */
 .pagination-ellipsis {
   color: #888;
 }

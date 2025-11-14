@@ -128,31 +128,6 @@
                 </div>
               </div>
 
-              <!-- Language Filter -->
-              <div class="column is-half">
-                <div class="field">
-                  <label class="label has-text-white">Idioma</label>
-                  <div class="control has-icons-left">
-                    <div class="select is-fullwidth">
-                      <select v-model="filters.language">
-                        <option value="">Todos os idiomas</option>
-                        <option value="en">Inglês</option>
-                        <option value="pt">Português</option>
-                        <option value="es">Espanhol</option>
-                        <option value="fr">Francês</option>
-                        <option value="it">Italiano</option>
-                        <option value="de">Alemão</option>
-                        <option value="ja">Japonês</option>
-                        <option value="ko">Coreano</option>
-                      </select>
-                    </div>
-                    <span class="icon is-left">
-                      <i class="fas fa-language"></i>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               <!-- Sort By -->
               <div class="column is-half">
                 <div class="field">
@@ -160,11 +135,14 @@
                   <div class="control has-icons-left">
                     <div class="select is-fullwidth">
                       <select v-model="filters.sortBy">
-                        <option value="popularity">Popularidade</option>
-                        <option value="rating">Nota</option>
-                        <option value="release_date">Data de Lançamento</option>
-                        <option value="title">Título</option>
-                      </select>
+                      <option value="popularity">Popularidade</option>
+                      <option value="rating">Nota (Maior para Menor)</option>
+                      <option value="vote_count">Mais Votados</option>
+                      <option value="release_date">Mais Recentes</option>
+                      <option value="release_date_asc">Mais Antigos</option>
+                      <option value="title">Título (A-Z)</option>
+                      <option value="title_desc">Título (Z-A)</option>
+                    </select>
                     </div>
                     <span class="icon is-left">
                       <i class="fas fa-arrow-down-wide-short"></i>
@@ -300,7 +278,6 @@ export default {
       yearTo: '',
       minRating: '',
       country: '',
-      language: '',
       sortBy: 'popularity'
     })
 
@@ -332,6 +309,9 @@ export default {
       ]
     })
 
+    /**
+     * Realiza busca simples por título de filme
+     */
     const performSimpleSearch = async () => {
       const query = searchQuery.value.trim()
       if (!query) return
@@ -359,6 +339,10 @@ export default {
       }
     }
 
+    /**
+     * Busca filmes com filtros avançados e paginação infinita
+     * @param {number} page - Número da página a ser carregada
+     */
     const fetchFilteredMovies = async (page = 1) => {
       try {
         if (page === 1) {
@@ -396,12 +380,18 @@ export default {
       }
     }
 
+    /**
+     * Aplica os filtros avançados e reinicia a busca
+     */
     const applyFilters = () => {
       currentPage.value = 1
       hasMore.value = true
       fetchFilteredMovies()
     }
 
+    /**
+     * Limpa todos os filtros e reseta resultados
+     */
     const clearFilters = () => {
       filters.value = {
         genre: '',
@@ -409,13 +399,15 @@ export default {
         yearTo: '',
         minRating: '',
         country: '',
-        language: '',
         sortBy: 'popularity'
       }
       results.value = []
       hasSearched.value = false
     }
 
+    /**
+     * Carrega mais resultados quando usuário rola até o final (infinite scroll)
+     */
     const loadMore = () => {
       if (!isLoadingMore.value && hasMore.value && searchMode.value === 'advanced') {
         fetchFilteredMovies(currentPage.value + 1)
@@ -459,37 +451,53 @@ export default {
 </script>
 
 <style scoped>
+/* Container principal da página de busca */
 .search-page {
   min-height: calc(100vh - 200px);
 }
 
+/* === Estilos das Tabs === */
+
+/* Borda inferior das tabs */
 .tabs ul {
   border-bottom-color: rgba(229, 9, 20, 0.3);
 }
 
+/* Tab ativa destacada em vermelho */
 .tabs li.is-active a {
   border-bottom-color: #e50914;
   color: #e50914;
 }
 
+/* Links das tabs em branco */
 .tabs a {
   color: #fff;
 }
 
+/* Hover nas tabs com vermelho suave */
 .tabs a:hover {
   border-bottom-color: rgba(229, 9, 20, 0.5);
   color: #e50914;
 }
 
+/* === Estilos do Formulário === */
+
+/* Container dos filtros avançados com gradiente escuro */
 .box {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border: 1px solid rgba(229, 9, 20, 0.2);
 }
 
+/* === Infinite Scroll === */
+
+/* Trigger invisível para detectar scroll */
 .load-more-trigger {
   height: 1px;
 }
 
+/* === Loading Spinner === */
+
+/* Spinner animado com cores da marca */
 .spinner {
   border: 4px solid rgba(229, 9, 20, 0.1);
   border-left-color: #e50914;
@@ -500,15 +508,20 @@ export default {
   margin: 0 auto;
 }
 
+/* Animação de rotação do spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
+/* === Estado Vazio === */
+
+/* Container do estado sem resultados */
 .empty-state {
   text-align: center;
   padding: 5rem 2rem;
 }
 
+/* Ícone grande do estado vazio */
 .empty-state .icon {
   font-size: 4rem;
   color: #666;

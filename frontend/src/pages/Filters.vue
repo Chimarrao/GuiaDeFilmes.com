@@ -57,28 +57,19 @@
               </div>
             </div>
 
-            <!-- Rating Filter -->
-            <div class="column is-half">
-              <div class="field">
-                <label class="label">Nota Mínima</label>
-                <div class="control has-icons-left">
-                  <input v-model="filters.minRating" type="number" class="input" placeholder="Ex: 7.0" min="0" max="10" step="0.1">
-                  <span class="icon is-left">
-                    <i class="fas fa-star"></i>
-                  </span>
-                </div>
-              </div>
-            </div>
-
             <!-- Country Filter -->
             <div class="column is-half">
               <div class="field">
                 <label class="label">País de Origem</label>
-                <div class="control has-icons-left">
-                  <input v-model="filters.country" type="text" class="input" placeholder="Ex: Estados Unidos, Brasil">
-                  <span class="icon is-left">
-                    <i class="fas fa-globe"></i>
-                  </span>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select v-model="filters.country">
+                      <option value="">Todos os países</option>
+                      <option v-for="country in countries" :key="country.code" :value="country.code">
+                        {{ country.flag }} {{ country.name }}
+                      </option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -86,39 +77,17 @@
             <!-- Language Filter -->
             <div class="column is-half">
               <div class="field">
-                <label class="label">Idioma</label>
-                <div class="control has-icons-left">
-                  <div class="select is-fullwidth">
-                    <select v-model="filters.language">
-                      <option value="">Todos os idiomas</option>
-                      <option value="en">Inglês</option>
-                      <option value="pt">Português</option>
-                      <option value="es">Espanhol</option>
-                      <option value="fr">Francês</option>
-                      <option value="it">Italiano</option>
-                      <option value="de">Alemão</option>
-                      <option value="ja">Japonês</option>
-                      <option value="ko">Coreano</option>
-                    </select>
-                  </div>
-                  <span class="icon is-left">
-                    <i class="fas fa-language"></i>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sort By -->
-            <div class="column is-half">
-              <div class="field">
                 <label class="label">Ordenar por</label>
                 <div class="control has-icons-left">
                   <div class="select is-fullwidth">
                     <select v-model="filters.sortBy">
                       <option value="popularity">Popularidade</option>
-                      <option value="rating">Nota</option>
-                      <option value="release_date">Data de Lançamento</option>
-                      <option value="title">Título</option>
+                      <option value="rating">Nota (Maior para Menor)</option>
+                      <option value="vote_count">Mais Votados</option>
+                      <option value="release_date">Mais Recentes</option>
+                      <option value="release_date_asc">Mais Antigos</option>
+                      <option value="title">Título (A-Z)</option>
+                      <option value="title_desc">Título (Z-A)</option>
                     </select>
                   </div>
                   <span class="icon is-left">
@@ -132,7 +101,7 @@
           <!-- Action Buttons -->
           <div class="field is-grouped is-grouped-centered mt-5">
             <div class="control">
-              <button @click="applyFilters" class="button is-danger is-medium" :class="{ 'is-loading': isLoading }">
+              <button @click="applyFilters" class="button is-danger filter-button" :class="{ 'is-loading': isLoading }">
                 <span class="icon">
                   <i class="fas fa-search"></i>
                 </span>
@@ -140,7 +109,7 @@
               </button>
             </div>
             <div class="control">
-              <button @click="clearFilters" class="button is-light is-medium">
+              <button @click="clearFilters" class="button is-light filter-button">
                 <span class="icon">
                   <i class="fas fa-rotate-left"></i>
                 </span>
@@ -217,11 +186,29 @@ export default {
       genre: '',
       yearFrom: '',
       yearTo: '',
-      minRating: '',
       country: '',
-      language: '',
       sortBy: 'popularity'
     })
+
+    const countries = ref([
+      { code: 'BR', name: 'Brasil', flag: '🇧🇷' },
+      { code: 'US', name: 'Estados Unidos', flag: '🇺🇸' },
+      { code: 'GB', name: 'Reino Unido', flag: '🇬🇧' },
+      { code: 'FR', name: 'França', flag: '🇫🇷' },
+      { code: 'DE', name: 'Alemanha', flag: '🇩🇪' },
+      { code: 'IT', name: 'Itália', flag: '🇮🇹' },
+      { code: 'ES', name: 'Espanha', flag: '🇪🇸' },
+      { code: 'JP', name: 'Japão', flag: '🇯🇵' },
+      { code: 'KR', name: 'Coreia do Sul', flag: '🇰🇷' },
+      { code: 'CN', name: 'China', flag: '🇨🇳' },
+      { code: 'IN', name: 'Índia', flag: '🇮🇳' },
+      { code: 'AU', name: 'Austrália', flag: '🇦🇺' },
+      { code: 'CA', name: 'Canadá', flag: '🇨🇦' },
+      { code: 'MX', name: 'México', flag: '🇲🇽' },
+      { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+      { code: 'SE', name: 'Suécia', flag: '🇸🇪' },
+      { code: 'NO', name: 'Noruega', flag: '🇳🇴' }
+    ])
 
     const genres = ref([
       { name: 'Ação', slug: 'acao' },
@@ -293,9 +280,7 @@ export default {
         genre: '',
         yearFrom: '',
         yearTo: '',
-        minRating: '',
         country: '',
-        language: '',
         sortBy: 'popularity'
       }
       movies.value = []
@@ -320,6 +305,7 @@ export default {
       genres,
       currentYear,
       totalResults,
+      countries,
       applyFilters,
       clearFilters
     }
@@ -360,5 +346,21 @@ export default {
 .box {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border: 1px solid rgba(229, 9, 20, 0.2);
+}
+
+/* Ajuste responsivo dos botões de filtro */
+.filter-button {
+  font-size: 1rem;
+}
+
+@media screen and (max-width: 768px) {
+  .filter-button {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .filter-button .icon {
+    font-size: 0.875rem;
+  }
 }
 </style>

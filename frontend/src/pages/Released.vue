@@ -171,6 +171,10 @@ export default {
       ]
     })
 
+    /**
+     * Busca filmes recém lançados com paginação
+     * @param {number} page - Número da página a ser carregada
+     */
     const fetchMovies = async (page = 1) => {
       try {
         if (page === 1) {
@@ -207,11 +211,18 @@ export default {
       }
     }
 
+    /**
+     * Aplica os filtros selecionados e recarrega a primeira página
+     */
     const applyFilters = () => {
       currentPage.value = 1
       fetchMovies(1)
     }
 
+    /**
+     * Navega para uma página específica
+     * @param {number} page - Número da página de destino
+     */
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         router.push({ query: { ...route.query, page } })
@@ -220,6 +231,10 @@ export default {
       }
     }
 
+    /**
+     * Gera array de números de página para paginação com reticências
+     * @returns {Array} Array com números de página e '...' para omissões
+     */
     const getPageNumbers = () => {
       const pages = []
       const current = currentPage.value
@@ -268,32 +283,39 @@ export default {
 </script>
 
 <style scoped>
+/* Container principal da página */
 .released-page {
   min-height: 100vh;
 }
 
+/* Seção de filtros com fundo escuro semi-transparente */
 .filters-section {
   background-color: rgba(0, 0, 0, 0.3);
   padding: 1.5rem 0;
   margin-bottom: 1rem;
 }
 
+/* Estilo dos selects de filtro */
 .select select {
   background-color: #2b2b2b;
   color: white;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Borda vermelha ao passar mouse nos selects */
 .select select:hover {
   border-color: #dc143c;
 }
 
-/* Pagination Styles */
+/* === Estilos de Paginação === */
+
+/* Container da paginação */
 .pagination {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
 
+/* Botões de navegação e links de página */
 .pagination-previous,
 .pagination-next,
 .pagination-link {
@@ -303,6 +325,7 @@ export default {
   transition: all 0.3s ease;
 }
 
+/* Efeito hover nos botões ativos */
 .pagination-previous:hover:not(:disabled),
 .pagination-next:hover:not(:disabled),
 .pagination-link:hover:not(.is-current) {
@@ -312,6 +335,7 @@ export default {
   transform: translateY(-2px);
 }
 
+/* Página atual destacada */
 .pagination-link.is-current {
   background-color: #dc143c;
   border-color: #dc143c;
@@ -319,6 +343,7 @@ export default {
   font-weight: 600;
 }
 
+/* Botões desabilitados */
 .pagination-previous:disabled,
 .pagination-next:disabled {
   background-color: #1a1a1a;
@@ -328,6 +353,7 @@ export default {
   opacity: 0.5;
 }
 
+/* Reticências entre números de página */
 .pagination-ellipsis {
   color: #888;
 }

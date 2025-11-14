@@ -501,15 +501,34 @@ class MovieController extends Controller
     }
 
     /**
+     * Retorna mapeamento de países extintos/históricos
+     * Sincronizado com extinctCountryFlags do frontend
+     * 
+     * @return array
+     */
+    private static function getExtinctCountriesMap(): array
+    {
+        return [
+            'CZE' => ['name' => 'Czechoslovakia'],
+            'GDR' => ['name' => 'East Germany'],
+            'SU' => ['name' => 'Soviet Union'],
+            'YU' => ['name' => 'Yugoslavia'],
+            'SAM' => ['name' => 'Serbia and Montenegro'],
+            'AN' => ['name' => 'Netherlands Antilles'],
+        ];
+    }
+
+    /**
      * Lista filmes filtrados por país de produção
      * 
      * Busca filmes cujo campo JSON `production_countries` contém o país especificado.
      * O código do país (ex: "BR", "US") é convertido para o nome completo em inglês
      * (ex: "Brazil", "United States of America") usando o enum CountryCode.
      * 
-     * DOIS MODOS DE OPERAÇÃO:
+     * Suporta tanto países modernos (via CountryCode enum) quanto países extintos
+     * (via getExtinctCountriesMap).
      * 
-     * @param string $countryCode Código ISO 3166-1 alpha-2 do país (ex: "BR", "US", "FR")
+     * @param string $countryCode Código ISO 3166-1 alpha-2 do país (ex: "BR", "US", "FR") ou código extinto (ex: "SU", "YU")
      * @param \Illuminate\Http\Request $request Parâmetros limit, page e filtros opcionais
      * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Http\JsonResponse
      */
@@ -518,17 +537,24 @@ class MovieController extends Controller
         $limit = $request->input('limit', 20);
         $page = $request->input('page', 1);
         
-        // Converte código do país para nome completo usando enum
-        //TODO: Falta pegar getExtinctCountriesMap do CountryController.php <- para países extintos
         $countryCode = strtoupper($countryCode);
-        $countryEnum = CountryCode::tryFromCode($countryCode);
+        $countryName = null;
         
-        if (!$countryEnum) {
-            return response()->json(['error' => 'País não encontrado'], 404);
-        }
-        
-        // Nome em inglês para TMDB
-        $countryName = $countryEnum->fullName(); 
+        // Verifica primeiro se é país extinto (prioridade)
+        $extinctCountries = self::getExtinctCountriesMap();
+        if (isset($extinctCountries[$countryCode])) {
+            $countryName = $extinctCountries[$countryCode]['name'];
+        } else {
+            // Se não é extinto, tenta enum de países modernos
+            $countryEnum = CountryCode::tryFromCode($countryCode);
+            
+            if (!$countryEnum) {
+                return response()->json(['error' => 'País não encontrado'], 404);
+            }
+            
+            // Nome em inglês para TMDB
+            $countryName = $countryEnum->fullName();
+        } 
         
         // Quando há filtros, não usar cache (se não cache explodiria)
         $hasFilters = $request->filled('genre') || $request->filled('yearFrom') || $request->filled('yearTo') || $request->filled('minRating');

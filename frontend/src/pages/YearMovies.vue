@@ -197,6 +197,10 @@ export default {
       'pre-1920': { start: 1900, end: 1919, label: 'Pré-1920' }
     }
 
+    /**
+     * Retorna informações sobre a década baseado no slug da URL
+     * @returns {Object} Objeto com start, end e label da década
+     */
     const getDecadeInfo = () => {
       const slug = decade.value
       
@@ -231,6 +235,10 @@ export default {
       description: `Descubra filmes ${decadeRange.value}`,
     })
 
+    /**
+     * Busca filmes de uma década específica com paginação
+     * @param {number} page - Número da página a ser carregada
+     */
     const fetchMovies = async (page = 1) => {
       try {
         if (page === 1) {
@@ -262,11 +270,17 @@ export default {
       }
     }
 
+    /**
+     * Aplica os filtros selecionados e recarrega a primeira página
+     */
     const applyFilters = () => {
       currentPage.value = 1
       fetchMovies(1)
     }
 
+    /**
+     * Limpa todos os filtros e recarrega os filmes
+     */
     const clearFilters = () => {
       filters.value = {
         genre: '',
@@ -276,6 +290,10 @@ export default {
       fetchMovies(1)
     }
 
+    /**
+     * Navega para uma página específica
+     * @param {number} page - Número da página de destino
+     */
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         router.push({ query: { ...route.query, page } })
@@ -284,6 +302,10 @@ export default {
       }
     }
 
+    /**
+     * Gera array de números de página para paginação com reticências
+     * @returns {Array} Array com números de página e '...' para omissões
+     */
     const getPageNumbers = () => {
       const pages = []
       const current = currentPage.value
@@ -347,26 +369,35 @@ export default {
 </script>
 
 <style scoped>
+/* Container principal da página */
 .year-movies-page {
   min-height: 100vh;
 }
 
+/* === Seção de Filtros === */
+
+/* Container dos filtros com fundo escuro semi-transparente */
 .filters-section {
   background-color: rgba(0, 0, 0, 0.3);
   padding: 2rem 0;
   margin-bottom: 2rem;
 }
 
+/* Estilo dos selects de filtro */
 .select select {
   background-color: #2b2b2b;
   color: white;
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Borda vermelha ao passar mouse nos selects */
 .select select:hover {
   border-color: #dc143c;
 }
 
+/* === Loading Spinner === */
+
+/* Spinner animado com cores da marca */
 .spinner {
   border: 4px solid rgba(229, 9, 20, 0.1);
   border-left-color: #e50914;
@@ -377,27 +408,35 @@ export default {
   margin: 0 auto;
 }
 
+/* Animação de rotação do spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
+/* === Estado Vazio === */
+
+/* Container do estado sem resultados */
 .empty-state {
   text-align: center;
   padding: 5rem 2rem;
 }
 
+/* Ícone grande do estado vazio */
 .empty-state .icon {
   font-size: 4rem;
   color: #666;
   margin-bottom: 1rem;
 }
 
-/* Pagination Styles */
+/* === Estilos de Paginação === */
+
+/* Container da paginação */
 .pagination {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
 
+/* Botões de navegação e links de página */
 .pagination-previous,
 .pagination-next,
 .pagination-link {
@@ -407,6 +446,7 @@ export default {
   transition: all 0.3s ease;
 }
 
+/* Efeito hover nos botões ativos */
 .pagination-previous:hover:not(:disabled),
 .pagination-next:hover:not(:disabled),
 .pagination-link:hover:not(.is-current) {
@@ -416,6 +456,7 @@ export default {
   transform: translateY(-2px);
 }
 
+/* Página atual destacada */
 .pagination-link.is-current {
   background-color: #dc143c;
   border-color: #dc143c;
@@ -423,6 +464,7 @@ export default {
   font-weight: 600;
 }
 
+/* Botões desabilitados */
 .pagination-previous:disabled,
 .pagination-next:disabled {
   background-color: #1a1a1a;
@@ -432,6 +474,7 @@ export default {
   opacity: 0.5;
 }
 
+/* Reticências entre números de página */
 .pagination-ellipsis {
   color: #888;
 }

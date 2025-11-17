@@ -1104,6 +1104,164 @@ export default {
       return groups
     })
 
+    // Tabela local de plataformas de streaming com preços e ícones
+    const streamingPlatforms = [
+      {
+        name: "Netflix",
+        slug: "netflix",
+        domains: ["netflix.com", "netflix.com/br"],
+        price: "R$ 20,90",
+        icon: "https://static.cdnlogo.com/logos/n/75/netflix.svg"
+      },
+      {
+        name: "Amazon Prime Video",
+        slug: "primevideo",
+        domains: ["primevideo.com", "amazon.com.br", "primevideo.com/br"],
+        price: "R$ 19,90",
+        icon: "https://static.cdnlogo.com/logos/a/32/amazon-prime-video_800.png"
+      },
+      {
+        name: "Disney+",
+        slug: "disney",
+        domains: ["disneyplus.com", "disneyplus.com/br"],
+        price: "R$ 43,90",
+        icon: "https://static.cdnlogo.com/logos/d/16/disney_800.png"
+      },
+      {
+        name: "Star+",
+        slug: "starplus",
+        domains: ["starplus.com", "starplus.com/br"],
+        price: "R$ 40,90",
+        icon: "https://static.cdnlogo.com/logos/s/19/star-plus.svg"
+      },
+      {
+        name: "HBO Max / Max",
+        slug: "hbomax",
+        domains: ["hbomax.com", "max.com", "hbomax.com/br"],
+        price: "R$ 34,90",
+        icon: "https://static.cdnlogo.com/logos/h/95/hbo-max.svg"
+      },
+      {
+        name: "Globoplay",
+        slug: "globoplay",
+        domains: ["globoplay.globo.com", "globoplay.com"],
+        price: "R$ 24,90",
+        icon: "https://static.cdnlogo.com/logos/g/90/globoplay.svg"
+      },
+      {
+        name: "Paramount+",
+        slug: "paramount",
+        domains: ["paramountplus.com", "paramountplus.com/br"],
+        price: "R$ 14,90",
+        icon: "https://static.cdnlogo.com/logos/p/26/paramount.png"
+      },
+      {
+        name: "Apple TV+",
+        slug: "appletv",
+        domains: ["tv.apple.com"],
+        price: "R$ 14,90",
+        icon: "https://static.cdnlogo.com/logos/a/46/apple-tv-plus.svg"
+      },
+      {
+        name: "Lionsgate+",
+        slug: "lionsgate",
+        domains: ["lionsgateplay.com", "starz.com"],
+        price: "R$ 14,90",
+        icon: "https://static.cdnlogo.com/logos/l/2/lionsgate_800.png"
+      },
+      {
+        name: "Looke",
+        slug: "looke",
+        domains: ["looke.com.br"],
+        price: "R$ 16,90",
+        icon: "https://tm.ibxk.com.br/2021/04/29/29154401165279.jpg"
+      },
+      {
+        name: "Netmovies",
+        slug: "netmovies",
+        domains: ["netmovies.com.br"],
+        price: null,
+        icon: "https://play-lh.googleusercontent.com/brjTxe9nhzzlSE6bEqmQ2U2Y_C0ttnAp2PhvLlK3Paa0E8n9-T9NsPSnzfxdTkGJ4A"
+      },
+      {
+        name: "Crunchyroll",
+        slug: "crunchyroll",
+        domains: ["crunchyroll.com"],
+        price: "R$ 14,99",
+        icon: "https://static.cdnlogo.com/logos/c/28/crunchyroll.svg"
+      },
+      {
+        name: "Google Play Filmes",
+        slug: "googleplay",
+        domains: ["play.google.com"],
+        price: null,
+        icon: "https://static.cdnlogo.com/logos/g/7/google-play-movies-amp-tv.svg"
+      }
+    ]
+
+    // Detecta plataforma pela URL
+    const detectPlatformFromUrl = (url) => {
+      if (!url) return null
+      
+      try {
+        const urlObj = new URL(url)
+        const hostname = urlObj.hostname.replace('www.', '')
+        
+        // Procura plataforma que contém o domínio
+        for (const platform of streamingPlatforms) {
+          for (const domain of platform.domains) {
+            if (hostname.includes(domain.replace('www.', ''))) {
+              return platform
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao parsear URL:', url, e)
+      }
+      
+      return null
+    }
+
+    // Enriquece dados de plataforma com informações locais
+    const enrichPlatformData = (item) => {
+      const enriched = { ...item }
+      
+      // Se não tem plataforma ou é "Unknown", tentar detectar pela URL
+      if (!enriched.platform || enriched.platform === 'Unknown') {
+        const detected = detectPlatformFromUrl(enriched.url)
+        if (detected) {
+          enriched.platform = detected.name
+          
+          // Preencher ícone se estiver faltando
+          if (!enriched.icon) {
+            enriched.icon = detected.icon
+          }
+          
+          // Preencher preço se estiver faltando (apenas para FLATRATE)
+          if (!enriched.price && enriched.type === 'FLATRATE' && detected.price) {
+            enriched.price = detected.price
+          }
+        }
+      } else {
+        // Se tem plataforma mas falta ícone ou preço, buscar na tabela
+        const platformData = streamingPlatforms.find(p => 
+          p.name.toLowerCase() === enriched.platform.toLowerCase() ||
+          enriched.platform.toLowerCase().includes(p.slug)
+        )
+        
+        if (platformData) {
+          if (!enriched.icon) {
+            enriched.icon = platformData.icon
+          }
+          if (!enriched.price && enriched.type === 'FLATRATE' && platformData.price) {
+            enriched.price = platformData.price
+          }
+        }
+      }
+      
+      return enriched
+    }
+
     // Normaliza os dados do JustWatch para um formato único
     const normalizeJustWatchData = () => {
       if (!movie.value || !movie.value.justwatch_watch_info) {
@@ -1115,20 +1273,25 @@ export default {
         return []
       }
 
+      let normalized = []
+
       // Formato 1: Array direto de plataformas
       // [{ url, icon, type, price, quality, platform }]
       if (data[0].platform && data[0].type) {
-        return data
+        normalized = data
       }
-
       // Formato 2: Objeto com offers
       // [{ url, title, offers: [{ url, icon, type, price, quality, platform }] }]
-      if (data[0].offers && Array.isArray(data[0].offers)) {
-        return data[0].offers
+      else if (data[0].offers && Array.isArray(data[0].offers)) {
+        normalized = data[0].offers
+      }
+      // Se não reconhecer o formato, retorna vazio
+      else {
+        return []
       }
 
-      // Se não reconhecer o formato, retorna vazio
-      return []
+      // Enriquecer cada item com dados faltantes
+      return normalized.map(item => enrichPlatformData(item))
     }
 
     // Verifica se tem dados do JustWatch

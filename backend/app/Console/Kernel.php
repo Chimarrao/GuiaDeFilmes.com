@@ -23,5 +23,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\FetchMoviesTMDB::class,
         \App\Console\Commands\JustwatchBackfill::class,
         \App\Console\Commands\CacheMovies::class,
+        \App\Console\Commands\GenerateSitemap::class,
     ];
 }

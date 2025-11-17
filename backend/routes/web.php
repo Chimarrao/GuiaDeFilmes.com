@@ -2,12 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+// Rota fallback APENAS para rotas que NÃO começam com /api
 Route::get('/{any}', function () {
-    $indexPath = public_path('index.html');
-
-    if (File::exists($indexPath)) {
-        return File::get($indexPath);
-    }
-
-    abort(404, "index.html not found");
-})->where('any', '.*');
+    return File::get(public_path('index.html'));
+})->where('any', '^(?!api)(?!.*\.).*$');

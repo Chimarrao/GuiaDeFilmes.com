@@ -57,59 +57,14 @@ class CountryController extends Controller
      */
     public function index()
     {
-        $countries = Cache::remember('countries_with_counts_v2', 7200, function () {
-            $results = DB::select(<<<SQL
-                SELECT 
-                    country,
-                    COUNT(*) AS total_movies
-                FROM (
-                    SELECT 
-                        m.id AS movie_id,
-                        JSON_UNQUOTE(JSON_EXTRACT(j.value, '$.name')) AS country
-                    FROM movies m,
-                        JSON_TABLE(m.production_countries, '$[*]' COLUMNS (
-                            value JSON PATH '$'
-                        )) AS j
-                ) AS extracted
-                WHERE country IS NOT NULL AND country <> ''
-                GROUP BY country
-                ORDER BY total_movies DESC, country
-            SQL);
-
-            // Mapeia os resultados do banco com os dados do enum
-            $mapped = [];
-            $extinctCountries = self::getExtinctCountriesMap();
-            
-            foreach ($results as $result) {
-                // IMPORTANTE: Verifica primeiro se é país extinto (prioridade sobre enum, evita bug)
-                if (isset($extinctCountries[$result->country])) {
-                    // País extinto com dados estáticos
-                    $extinctData = $extinctCountries[$result->country];
-                    $mapped[] = [
-                        'code' => $extinctData['code'],
-                        'name' => $extinctData['name'],
-                        'flag' => $extinctData['flag'],
-                        'count' => (int) $result->total_movies,
-                        'extinct' => true,
-                    ];
-                } else {
-                    // Tenta mapear para país moderno pelo enum
-                    $countryEnum = CountryCode::findByEnglishName($result->country);
-                    
-                    if ($countryEnum) {
-                        $mapped[] = [
-                            'code' => $countryEnum->value,
-                            'name' => $countryEnum->label(),
-                            'flag' => $countryEnum->getFlagUrl(),
-                            'count' => (int) $result->total_movies,
-                            'extinct' => false,
-                        ];
-                    }
-                }
-            }
-
-            return $mapped;
-        });
+        $cacheKey = 'countries_with_counts_v2';
+        $countries = Cache::get($cacheKey);
+        
+        if (!$countries) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
 
         return response()->json($countries);
     }

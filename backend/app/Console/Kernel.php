@@ -12,7 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('cache:generate')->hourly();
+        $schedule->command('cache:clear')->dailyAt('00:00');
+        $schedule->command('cache:generate')->dailyAt('00:00');
     }
 
     /**

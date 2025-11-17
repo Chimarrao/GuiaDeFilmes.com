@@ -136,14 +136,13 @@ class MovieController extends Controller
         $page = $request->input('page', 1);
         
         $cacheKey = "upcoming_ids_v1";
-        $cachedIds = Cache::remember($cacheKey, 7200, function () {
-            return Movie::where('status', 'upcoming')
-                ->orderBy('release_date', 'asc')
-                ->orderBy('popularity', 'desc')
-                ->limit(200)
-                ->pluck('id')
-                ->toArray();
-        });
+        $cachedIds = Cache::get($cacheKey);
+        
+        if (!$cachedIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         $offset = ($page - 1) * $limit;
         $totalCached = count($cachedIds);
@@ -161,9 +160,13 @@ class MovieController extends Controller
                 ->values();
             
             // Contagem total (cache)
-            $totalCount = Cache::remember('upcoming_total_count', 3600, function () {
-                return Movie::where('status', 'upcoming')->count();
-            });
+            $totalCount = Cache::get('upcoming_total_count');
+            
+            if (!$totalCount) {
+                return response()->json([
+                    'error' => "Cache 'upcoming_total_count' não carregado. Execute o comando cache:generate."
+                ], 500);
+            }
             
             return MovieListResource::collection(
                 new \Illuminate\Pagination\LengthAwarePaginator(
@@ -219,14 +222,13 @@ class MovieController extends Controller
         
         // Cache de IDs pré-ordenados (200 filmes = 10 páginas)
         $cacheKey = "in_theaters_ids_v1";
-        $cachedIds = Cache::remember($cacheKey, 7200, function () {
-            return Movie::where('status', 'in_theaters')
-                ->orderBy('release_date', 'desc')
-                ->orderBy('popularity', 'desc')
-                ->limit(200)
-                ->pluck('id')
-                ->toArray();
-        });
+        $cachedIds = Cache::get($cacheKey);
+        
+        if (!$cachedIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         $offset = ($page - 1) * $limit;
         $totalCached = count($cachedIds);
@@ -244,9 +246,13 @@ class MovieController extends Controller
                 ->values();
             
             // Contagem total (cache)
-            $totalCount = Cache::remember('in_theaters_total_count', 3600, function () {
-                return Movie::where('status', 'in_theaters')->count();
-            });
+            $totalCount = Cache::get('in_theaters_total_count');
+            
+            if (!$totalCount) {
+                return response()->json([
+                    'error' => "Cache 'in_theaters_total_count' não carregado. Execute o comando cache:generate."
+                ], 500);
+            }
             
             return MovieListResource::collection(
                 new \Illuminate\Pagination\LengthAwarePaginator(
@@ -277,7 +283,6 @@ class MovieController extends Controller
      * OTIMIZAÇÃO COM CACHE:
      * - Usa cache de IDs pré-ordenados para primeiras 10 páginas (200 filmes)
      * - Cache key: released_ids_v1
-     * - TTL: 7200s (2 horas)
      * - Paginação manual com array_slice para evitar query pesada
      * 
      * COMPORTAMENTO:
@@ -297,13 +302,13 @@ class MovieController extends Controller
         
         // Cache de IDs pré-ordenados (200 filmes = 10 páginas)
         $cacheKey = "released_ids_v1";
-        $cachedIds = Cache::remember($cacheKey, 7200, function () use ($currentYear) {
-            return Movie::where('status', 'released')
-                ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
-                ->limit(200)
-                ->pluck('id')
-                ->toArray();
-        });
+        $cachedIds = Cache::get($cacheKey);
+        
+        if (!$cachedIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         $offset = ($page - 1) * $limit;
         $totalCached = count($cachedIds);
@@ -321,11 +326,13 @@ class MovieController extends Controller
                 ->values();
             
             // Contagem total (cache + banco)
-            $totalCount = Cache::remember('released_total_count', 7200, function () use ($currentYear) {
-                return Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
-                    ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
-                    ->count();
-            });
+            $totalCount = Cache::get('released_total_count');
+            
+            if (!$totalCount) {
+                return response()->json([
+                    'error' => "Cache 'released_total_count' não carregado. Execute o comando cache:generate."
+                ], 500);
+            }
             
             return MovieListResource::collection(
                 new \Illuminate\Pagination\LengthAwarePaginator(
@@ -372,13 +379,13 @@ class MovieController extends Controller
         // Cache dos IDs por gênero (revalidado a cada 2 horas)
         // OTIMIZAÇÃO v7: Usa JSON_CONTAINS ao invés de LIKE para aproveitar idx_genres_json
         $cacheKey = "genre_{$genre}_ids_v7";
-        $movieIds = Cache::remember($cacheKey, 7200, function () use ($genreName) {
-            return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($genreName) . '"'])
-                ->whereNotNull('release_date')
-                ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
-                ->pluck('id')
-                ->toArray();
-        });
+        $movieIds = Cache::get($cacheKey);
+        
+        if (!$movieIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         // Paginação manual dos IDs
         $offset = ($page - 1) * $limit;
@@ -454,15 +461,13 @@ class MovieController extends Controller
         
         // Cache dos IDs por década (revalidado a cada 2 horas)
         $cacheKey = "decade_{$decade}_ids_v2";
-        $movieIds = Cache::remember($cacheKey, 7200, function () use ($startYear, $endYear) {
-            return Movie::whereNotNull('release_date')
-                ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
-                ->orderBy('tmdb_vote_count', 'desc')
-                ->orderBy('popularity', 'desc')
-                ->limit(200)
-                ->pluck('id')
-                ->toArray();
-        });
+        $movieIds = Cache::get($cacheKey);
+        
+        if (!$movieIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         // Paginação manual
         $offset = ($page - 1) * $limit;
@@ -590,15 +595,13 @@ class MovieController extends Controller
         
         // Sem filtros: usa cache
         $cacheKey = "country_{$countryCode}_ids_v2";
-        $movieIds = Cache::remember($cacheKey, 7200, function () use ($countryName) {
-            return Movie::whereRaw("LOWER(production_countries) LIKE ?", ['%' . strtolower($countryName) . '%'])
-                
-                ->orderBy('tmdb_vote_count', 'desc')
-                ->orderBy('popularity', 'desc')
-                ->limit(200)
-                ->pluck('id')
-                ->toArray();
-        });
+        $movieIds = Cache::get($cacheKey);
+        
+        if (!$movieIds) {
+            return response()->json([
+                'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+            ], 500);
+        }
         
         // Paginação manual
         $offset = ($page - 1) * $limit;
@@ -651,6 +654,67 @@ class MovieController extends Controller
      */
     public function filter(Request $request)
     {
+        $limit = $request->input('limit', 20);
+        $page = $request->input('page', 1);
+        
+        // OTIMIZAÇÃO: Se apenas filtro de gênero é usado, usar cache (primeiras 10 páginas)
+        $hasOnlyGenreFilter = $request->filled('genre') 
+            && !$request->filled('yearFrom') 
+            && !$request->filled('yearTo') 
+            && !$request->filled('minRating') 
+            && !$request->filled('country') 
+            && !$request->filled('language');
+        
+        if ($hasOnlyGenreFilter) {
+            $genreSlug = $request->genre;
+            $cacheKey = "filter_genre_{$genreSlug}_ids_v1";
+            
+            // Ler IDs do cache (gerado pelo cache:generate)
+            $cachedIds = Cache::get($cacheKey);
+            
+            if (!$cachedIds) {
+                return response()->json([
+                    'error' => "Cache '{$cacheKey}' não carregado. Execute o comando cache:generate."
+                ], 500);
+            }
+            
+            // Paginação manual com IDs em cache (até página 10 = 200 filmes)
+            $offset = ($page - 1) * $limit;
+            $pageIds = array_slice($cachedIds, $offset, $limit);
+            
+            // Se não há filmes nesta página, retornar vazio
+            if (empty($pageIds)) {
+                return MovieListResource::collection(
+                    new \Illuminate\Pagination\LengthAwarePaginator(
+                        collect([]),
+                        count($cachedIds),
+                        $limit,
+                        $page,
+                        ['path' => $request->url(), 'query' => $request->query()]
+                    )
+                );
+            }
+            
+            // Buscar filmes mantendo ordem do cache
+            $idsString = implode(',', $pageIds);
+            $movies = Movie::whereIn('id', $pageIds)
+                ->orderByRaw("FIELD(id, {$idsString})")
+                ->get();
+            
+            $total = count($cachedIds);
+            
+            return MovieListResource::collection(
+                new \Illuminate\Pagination\LengthAwarePaginator(
+                    $movies,
+                    $total,
+                    $limit,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                )
+            );
+        }
+        
+        // Quando há múltiplos filtros, query direta (sem cache)
         $query = Movie::query();
         
         // Gênero filter usando enum
@@ -690,7 +754,6 @@ class MovieController extends Controller
         
         $query->orderBy($sortByEnum->column(), $sortByEnum->direction());
         
-        $limit = $request->input('limit', 20);
         $movies = $query->paginate($limit);
         
         return MovieListResource::collection($movies);
@@ -704,9 +767,12 @@ class MovieController extends Controller
      */
     private function getCustomOrdering(string $type): array
     {
-        $ordering = Cache::remember('movie_ordering', 3600, function () {
-            return MovieOrdering::first();
-        });
+        $ordering = Cache::get('movie_ordering');
+        
+        if (!$ordering) {
+            // Se não há ordenação customizada, retornar vazio (não é erro crítico)
+            return [];
+        }
         
         return $ordering ? ($ordering->$type ?? []) : [];
     }
@@ -754,9 +820,11 @@ class MovieController extends Controller
                 $orderedMovies = $orderedMovies->concat($additionalMovies);
             }
             
-            $totalAuto = Cache::remember($cacheKey, $cacheTtl, function () use ($baseQuery) {
-                return $baseQuery->count();
-            });
+            $totalAuto = Cache::get($cacheKey);
+            if (!$totalAuto) {
+                // Fallback: se cache de contagem não existir, calcular diretamente
+                $totalAuto = $baseQuery->count();
+            }
             $total = $orderedCount + $totalAuto;
             
             return MovieListResource::collection(
@@ -778,9 +846,11 @@ class MovieController extends Controller
                 ->take($limit)
                 ->get();
             
-            $totalAuto = Cache::remember($cacheKey, $cacheTtl, function () use ($baseQuery) {
-                return $baseQuery->count();
-            });
+            $totalAuto = Cache::get($cacheKey);
+            if (!$totalAuto) {
+                // Fallback: se cache de contagem não existir, calcular diretamente
+                $totalAuto = $baseQuery->count();
+            }
             $total = $orderedCount + $totalAuto;
             
             return MovieListResource::collection(

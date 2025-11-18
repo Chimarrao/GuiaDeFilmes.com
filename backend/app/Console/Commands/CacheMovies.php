@@ -138,6 +138,7 @@ class CacheMovies extends Command
                 // Buscar IDs internos dos filmes com TMDB IDs customizados
                 $customMovies = Movie::whereIn('tmdb_id', $tmdbIds)
                     ->where('status', 'upcoming')
+                    ->where('adult', 0)
                     ->get();
                 
                 // Manter ordem do MovieOrdering
@@ -153,6 +154,7 @@ class CacheMovies extends Command
                 if ($remaining > 0) {
                     $autoIds = Movie::where('status', 'upcoming')
                         ->whereNotIn('tmdb_id', $tmdbIds)
+                        ->where('adult', 0)
                         ->orderBy('release_date', 'asc')
                         ->orderBy('popularity', 'desc')
                         ->limit($remaining)
@@ -164,6 +166,7 @@ class CacheMovies extends Command
             } else {
                 // Sem ordenação customizada, usar apenas ordenação automática
                 $finalIds = Movie::where('status', 'upcoming')
+                    ->where('adult', 0)
                     ->orderBy('release_date', 'asc')
                     ->orderBy('popularity', 'desc')
                     ->limit(200)
@@ -176,7 +179,7 @@ class CacheMovies extends Command
         
         // Cache de contagem total
         $totalCount = Cache::remember('upcoming_total_count', 86400, function () {
-            return Movie::where('status', 'upcoming')->count();
+            return Movie::where('status', 'upcoming')->where('adult', 0)->count();
         });
         
         $this->info("  ✓ Cache: {$cacheKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
@@ -213,6 +216,7 @@ class CacheMovies extends Command
                 // Buscar IDs internos dos filmes com TMDB IDs customizados
                 $customMovies = Movie::whereIn('tmdb_id', $tmdbIds)
                     ->where('status', 'in_theaters')
+                    ->where('adult', 0)
                     ->get();
                 
                 // Manter ordem do MovieOrdering
@@ -228,6 +232,7 @@ class CacheMovies extends Command
                 if ($remaining > 0) {
                     $autoIds = Movie::where('status', 'in_theaters')
                         ->whereNotIn('tmdb_id', $tmdbIds)
+                        ->where('adult', 0)
                         ->orderBy('release_date', 'desc')
                         ->orderBy('popularity', 'desc')
                         ->limit($remaining)
@@ -239,6 +244,7 @@ class CacheMovies extends Command
             } else {
                 // Sem ordenação customizada, usar apenas ordenação automática
                 $finalIds = Movie::where('status', 'in_theaters')
+                    ->where('adult', 0)
                     ->orderBy('release_date', 'desc')
                     ->orderBy('popularity', 'desc')
                     ->limit(200)
@@ -251,7 +257,7 @@ class CacheMovies extends Command
         
         // Cache de contagem total
         $totalCount = Cache::remember('in_theaters_total_count', 86400, function () {
-            return Movie::where('status', 'in_theaters')->count();
+            return Movie::where('status', 'in_theaters')->where('adult', 0)->count();
         });
         
         $this->info("  ✓ Cache: {$cacheKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
@@ -290,6 +296,7 @@ class CacheMovies extends Command
                 // Buscar IDs internos dos filmes com TMDB IDs customizados
                 $customMovies = Movie::whereIn('tmdb_id', $tmdbIds)
                     ->where('status', 'released')
+                    ->where('adult', 0)
                     ->get();
                 
                 // Manter ordem do MovieOrdering
@@ -305,6 +312,7 @@ class CacheMovies extends Command
                 if ($remaining > 0) {
                     $autoIds = Movie::where('status', 'released')
                         ->whereNotIn('tmdb_id', $tmdbIds)
+                        ->where('adult', 0)
                         ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
                         ->limit($remaining)
                         ->pluck('id')
@@ -315,6 +323,7 @@ class CacheMovies extends Command
             } else {
                 // Sem ordenação customizada, usar apenas ordenação automática
                 $finalIds = Movie::where('status', 'released')
+                    ->where('adult', 0)
                     ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
                     ->limit(200)
                     ->pluck('id')
@@ -328,6 +337,7 @@ class CacheMovies extends Command
         $totalCount = Cache::remember('released_total_count', 86400, function () use ($currentYear) {
             return Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
                 ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
+                ->where('adult', 0)
                 ->count();
         });
         
@@ -386,6 +396,7 @@ class CacheMovies extends Command
                 $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
                     return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($name) . '"'])
                         ->whereNotNull('release_date')
+                        ->where('adult', 0)
                         ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
                         ->limit(200)
                         ->pluck('id')
@@ -434,6 +445,7 @@ class CacheMovies extends Command
                 $movieIds = Cache::remember($cacheKey, 86400, function () use ($startYear, $endYear) {
                     return Movie::whereNotNull('release_date')
                         ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
+                        ->where('adult', 0)
                         ->orderBy('tmdb_vote_count', 'desc')
                         ->orderBy('popularity', 'desc')
                         ->limit(200)
@@ -496,6 +508,7 @@ class CacheMovies extends Command
             try {
                 $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
                     return Movie::whereRaw("LOWER(production_countries) LIKE ?", ['%' . strtolower($name) . '%'])
+                        ->where('adult', 0)
                         ->orderBy('tmdb_vote_count', 'desc')
                         ->orderBy('popularity', 'desc')
                         ->limit(200)
@@ -546,6 +559,7 @@ class CacheMovies extends Command
                              JSON_TABLE(m.production_countries, '$[*]' COLUMNS (
                                  value JSON PATH '$'
                              )) AS j
+                        WHERE m.adult = 0
                     ) AS extracted
                     WHERE country IS NOT NULL AND country <> ''
                     GROUP BY country
@@ -681,6 +695,7 @@ class CacheMovies extends Command
                 $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
                     return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($name) . '"'])
                         ->whereNotNull('release_date')
+                        ->where('adult', 0)
                         ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
                         ->limit(200) // 10 páginas × 20 itens/página
                         ->pluck('id')

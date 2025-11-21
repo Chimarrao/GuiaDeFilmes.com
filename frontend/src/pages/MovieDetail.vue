@@ -8,23 +8,22 @@
     <!-- Movie Content -->
     <div v-else-if="movie">
       <!-- Hero Header with Backdrop -->
-      <div class="movie-detail-header" :style="{ backgroundImage: movie ? getBackdropUrl() : 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)' }">
+      <div class="movie-detail-header"
+        :style="{ backgroundImage: movie ? getBackdropUrl() : 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)' }">
         <div class="movie-detail-overlay"></div>
         <div class="container movie-detail-content">
           <div class="columns">
             <div class="column is-one-third">
               <figure class="image">
-                <img 
-                  class="movie-poster-large" 
-                  :src="movie ? getPosterUrl() : 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'" 
-                  :alt="movie ? movie.title : 'Carregando...'"
-                />
+                <img class="movie-poster-large"
+                  :src="movie ? getPosterUrl() : 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'"
+                  :alt="movie ? movie.title : 'Carregando...'" />
               </figure>
             </div>
 
             <div class="column movie-info">
               <h1 class="title is-1 has-text-white">{{ movie.title }}</h1>
-              
+
               <div class="movie-meta mb-4">
                 <div class="movie-meta-item">
                   <span class="icon">
@@ -55,13 +54,8 @@
               </div>
 
               <div class="genres mb-4" v-if="movie.genres && movie.genres.length">
-                <router-link 
-                  v-for="genre in movie.genres" 
-                  :key="genre" 
-                  :to="getGenreLink(genre)"
-                  class="tag is-medium is-dark"
-                  style="text-decoration: none;"
-                >
+                <router-link v-for="genre in movie.genres" :key="genre" :to="getGenreLink(genre)"
+                  class="tag is-medium is-dark" style="text-decoration: none;">
                   {{ genre }}
                 </router-link>
               </div>
@@ -72,7 +66,8 @@
 
               <div class="content has-text-white-ter">
                 <h2 class="title is-4 has-text-white">Sinopse</h2>
-                <p class="is-size-5" style="text-align: justify;">{{ movie ? getSynopsis() : 'Carregando sinopse...' }}</p>
+                <p class="is-size-5" style="text-align: justify;">{{ movie ? getSynopsis() : 'Carregando sinopse...' }}
+                </p>
               </div>
             </div>
           </div>
@@ -82,7 +77,7 @@
       <!-- Main Content -->
       <div class="container">
         <div class="section">
-          
+
           <!-- SEO: Release Date Block -->
           <div class="box seo-box mb-5" style="background-color: var(--background-card);">
             <h2 class="title is-3 has-text-white mb-4">
@@ -114,10 +109,10 @@
               </span>
             </h2>
             <div class="content has-text-white-ter is-size-5">
-              
+
               <!-- Where to Watch - JustWatch Data (prioridade) -->
               <div v-if="hasJustWatchData()" class="mt-4">
-                
+
                 <!-- Assinatura (FLATRATE) -->
                 <div v-if="flatratePlatforms.length > 0" class="mb-5">
                   <h3 class="title is-5 has-text-white mb-3">
@@ -129,20 +124,10 @@
                     </span>
                   </h3>
                   <div class="platform-grid">
-                    <a 
-                      v-for="(platform, index) in flatratePlatforms" 
-                      :key="`flatrate-${index}`"
-                      :href="platform.url" 
-                      target="_blank"
-                      class="platform-card"
-                      :title="`Assistir ${movie.title} em ${platform.platform}`"
-                    >
+                    <a v-for="(platform, index) in flatratePlatforms" :key="`flatrate-${index}`" :href="platform.url"
+                      target="_blank" class="platform-card" :title="`Assistir ${movie.title} em ${platform.platform}`">
                       <div class="platform-icon">
-                        <img 
-                          :src="platform.icon" 
-                          :alt="platform.platform"
-                          @error="handleImageError"
-                        >
+                        <img :src="platform.icon" :alt="platform.platform" @error="handleImageError">
                       </div>
                       <div class="platform-info">
                         <span class="platform-name">{{ platform.platform }}</span>
@@ -163,20 +148,11 @@
                     </span>
                   </h3>
                   <div class="platform-grid">
-                    <a 
-                      v-for="(platform, index) in rentPlatforms" 
-                      :key="`rent-${index}`"
-                      :href="platform.url" 
-                      target="_blank"
-                      class="platform-card"
-                      :title="`Alugar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`"
-                    >
+                    <a v-for="(platform, index) in rentPlatforms" :key="`rent-${index}`" :href="platform.url"
+                      target="_blank" class="platform-card"
+                      :title="`Alugar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`">
                       <div class="platform-icon">
-                        <img 
-                          :src="platform.icon" 
-                          :alt="platform.platform"
-                          @error="handleImageError"
-                        >
+                        <img :src="platform.icon" :alt="platform.platform" @error="handleImageError">
                       </div>
                       <div class="platform-info">
                         <span class="platform-name">{{ platform.platform }}</span>
@@ -200,20 +176,11 @@
                     </span>
                   </h3>
                   <div class="platform-grid">
-                    <a 
-                      v-for="(platform, index) in buyPlatforms" 
-                      :key="`buy-${index}`"
-                      :href="platform.url" 
-                      target="_blank"
-                      class="platform-card"
-                      :title="`Comprar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`"
-                    >
+                    <a v-for="(platform, index) in buyPlatforms" :key="`buy-${index}`" :href="platform.url"
+                      target="_blank" class="platform-card"
+                      :title="`Comprar ${movie.title} em ${platform.platform}${platform.price ? ' por ' + formatPrice(platform.price) : ''}`">
                       <div class="platform-icon">
-                        <img 
-                          :src="platform.icon" 
-                          :alt="platform.platform"
-                          @error="handleImageError"
-                        >
+                        <img :src="platform.icon" :alt="platform.platform" @error="handleImageError">
                       </div>
                       <div class="platform-info">
                         <span class="platform-name">{{ platform.platform }}</span>
@@ -275,7 +242,8 @@
               </div>
             </div>
             <div v-else class="columns is-multiline">
-              <div v-for="actor in movie.cast" :key="actor.id" class="column is-one-fifth-desktop is-one-third-tablet is-half-mobile">
+              <div v-for="actor in movie.cast" :key="actor.id"
+                class="column is-one-fifth-desktop is-one-third-tablet is-half-mobile">
                 <a :href="`https://www.themoviedb.org/person/${actor.id}`" target="_blank" class="cast-card">
                   <div class="card" style="background-color: var(--background-card);">
                     <div class="card-image">
@@ -338,15 +306,12 @@
               </span>
             </h3>
             <div class="reviews-container">
-              <div v-for="review in movie.reviews_data" :key="review.id" class="box review-card mb-4" style="background-color: var(--background-card);">
+              <div v-for="review in movie.reviews_data" :key="review.id" class="box review-card mb-4"
+                style="background-color: var(--background-card);">
                 <article class="media">
                   <figure class="media-left">
                     <p class="image is-64x64">
-                      <img 
-                        class="is-rounded" 
-                        :src="getReviewerAvatar(review.author_details)" 
-                        :alt="review.author"
-                      >
+                      <img class="is-rounded" :src="getReviewerAvatar(review.author_details)" :alt="review.author">
                     </p>
                   </figure>
                   <div class="media-content">
@@ -365,16 +330,11 @@
                         </span>
                         <small class="has-text-white-ter ml-2">{{ formatReviewDate(review.created_at) }}</small>
                       </div>
-                      <div 
-                        class="has-text-white review-content" 
+                      <div class="has-text-white review-content"
                         :class="{ 'is-collapsed': !review.expanded && isReviewLong(review.content) }"
-                        v-html="formatReviewContent(review.content, review.expanded)"
-                      ></div>
-                      <button 
-                        v-if="isReviewLong(review.content)"
-                        @click="toggleReview(review)"
-                        class="button is-small is-text has-text-danger mt-2"
-                      >
+                        v-html="formatReviewContent(review.content, review.expanded)"></div>
+                      <button v-if="isReviewLong(review.content)" @click="toggleReview(review)"
+                        class="button is-small is-text has-text-danger mt-2">
                         {{ review.expanded ? 'Ver menos' : 'Ver mais' }}
                       </button>
                     </div>
@@ -446,7 +406,8 @@
                 </span>
               </h3>
               <div v-if="isMobile" class="horizontal-scroll">
-                <div v-for="(image, index) in uniqueBackdrops" :key="'backdrop-' + index" class="horizontal-scroll-item image-card">
+                <div v-for="(image, index) in uniqueBackdrops" :key="'backdrop-' + index"
+                  class="horizontal-scroll-item image-card">
                   <figure class="image is-16by9 photo-item" @click="openLightbox(image.url)">
                     <img :src="image.url" :alt="`${movie.title} - Imagem ${index + 1}`">
                   </figure>
@@ -471,7 +432,8 @@
                 </span>
               </h3>
               <div v-if="isMobile" class="horizontal-scroll">
-                <div v-for="(image, index) in uniquePosters" :key="'poster-' + index" class="horizontal-scroll-item image-card">
+                <div v-for="(image, index) in uniquePosters" :key="'poster-' + index"
+                  class="horizontal-scroll-item image-card">
                   <figure class="image photo-item" @click="openLightbox(image.url)" style="width: 200px;">
                     <img :src="image.url" :alt="`${movie.title} - Pôster ${index + 1}`">
                   </figure>
@@ -672,13 +634,13 @@ export default {
         loading.value = true
         await store.fetchMovie(route.params.slug)
         movie.value = store.currentMovie
-        
+
         if (movie.value) {
           // Debug sinopse
           if (movie.value.ai_content && movie.value.ai_content.ai_synopsis) {
           } else {
           }
-          
+
           // Temporariamente desabilitado para debug
           // updateMetaTags()
         } else {
@@ -792,7 +754,7 @@ export default {
       if (!movie.value) {
         return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
       }
-      
+
       if (movie.value.poster_url) {
         return movie.value.poster_url
       }
@@ -804,7 +766,7 @@ export default {
       if (!movie.value) {
         return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)'
       }
-      
+
       if (movie.value.images && movie.value.images.backdrops && movie.value.images.backdrops.length > 0) {
         return `url(${movie.value.images.backdrops[0].url})`
       }
@@ -859,21 +821,21 @@ export default {
 
     const formatReviewContent = (content, expanded = false) => {
       if (!content) return ''
-      
+
       let text = content
       const maxLength = 600
-      
+
       // Se não está expandido e o texto é longo, corta
       if (!expanded && text.length > maxLength) {
         text = text.substring(0, maxLength) + '...'
       }
-      
+
       // Converte quebras de linha em parágrafos
       text = text.replace(/\r\n\r\n/g, '</p><p>')
       text = text.replace(/\n\n/g, '</p><p>')
       text = text.replace(/\r\n/g, '<br>')
       text = text.replace(/\n/g, '<br>')
-      
+
       return `<p>${text}</p>`
     }
 
@@ -891,7 +853,7 @@ export default {
     const getReleaseContext = () => {
       const status = movie.value.status
       const title = movie.value.title
-      
+
       if (status === 'upcoming') {
         return `Este é um dos lançamentos mais aguardados de ${getYear()}. Marque na sua agenda e não perca a estreia de ${title} nos cinemas!`
       } else if (status === 'in_theaters') {
@@ -952,7 +914,7 @@ export default {
     const getWhereToWatchText = () => {
       const status = movie.value.status
       const title = movie.value.title
-      
+
       if (status === 'upcoming') {
         return `${title} ainda não foi lançado. A estreia está prevista para ${formatDate(movie.value.release_date)}. 
                 Assim que o filme estiver disponível nos cinemas, você poderá conferir as sessões em sua cidade.`
@@ -1001,24 +963,24 @@ export default {
       if (!movie.value?.release_date) {
         return '-'
       }
-      
+
       const year = new Date(movie.value.release_date).getFullYear()
       return year
     }
 
     const formatCurrency = (value) => {
       if (!value || value <= 0) return '-'
-      
+
       const millions = value / 1000000
       if (millions >= 1) {
         return `US$ ${millions.toFixed(1).replace('.', ',')} milhões`
       }
-      
+
       const thousands = value / 1000
       if (thousands >= 1) {
         return `US$ ${thousands.toFixed(0)} mil`
       }
-      
+
       return `US$ ${value.toLocaleString('pt-BR')}`
     }
 
@@ -1074,16 +1036,16 @@ export default {
     }
 
     const hasPhotos = () => {
-      return movie.value.images && 
-             ((movie.value.images.backdrops && movie.value.images.backdrops.filter(img => img.url).length > 0) ||
-              (movie.value.images.posters && movie.value.images.posters.filter(img => img.url).length > 0))
+      return movie.value.images &&
+        ((movie.value.images.backdrops && movie.value.images.backdrops.filter(img => img.url).length > 0) ||
+          (movie.value.images.posters && movie.value.images.posters.filter(img => img.url).length > 0))
     }
 
     const groupedVideos = computed(() => {
       if (!movie.value?.videos) {
         return {}
       }
-      
+
       const groups = {}
       const typeTranslation = {
         'Trailer': 'Trailers',
@@ -1105,6 +1067,27 @@ export default {
     })
 
     // Tabela local de plataformas de streaming com preços e ícones
+    //TODO: Adicionar esses: 
+    /*
+    Belas Artes À La Carte
+    Curiosity Stream
+    Cultpix
+    CurtaOn (Curta!On)
+    DOCSVILLE
+    Dekkoo
+    DocAlliance Films
+    Eventive
+    FOUND TV
+    FilmBox+
+    Filmzie
+    Hoichoi
+    Kocowa
+    Libreflix
+    Magellan TV
+    Mercado Play
+    MovieMe 
+    */
+
     const streamingPlatforms = [
       {
         name: "Netflix",
@@ -1123,7 +1106,7 @@ export default {
       {
         name: "Disney+",
         slug: "disney",
-        domains: ["disneyplus.com", "disneyplus.com/br"],
+        domains: ["disneyplus.com", "disneyplus.com/br", "disneyplus.bn5x.net"],
         price: "R$ 43,90",
         icon: "https://static.cdnlogo.com/logos/d/16/disney_800.png"
       },
@@ -1196,17 +1179,66 @@ export default {
         domains: ["play.google.com"],
         price: null,
         icon: "https://static.cdnlogo.com/logos/g/7/google-play-movies-amp-tv.svg"
-      }
+      },
+      {
+        name: "Oldflix",
+        slug: "oldflix",
+        domains: ["oldflix.com.br"],
+        price: "R$ 12,90",
+        icon: "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/b7/09/44/b7094418-ce37-1e39-6359-ace2d8c7e1b3/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/1200x630wa.png"
+      },
+      {
+        name: "Plex",
+        slug: "plex",
+        domains: ["plex.tv"],
+        price: 'Grátis com anúncios',
+        icon: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSc7hwXCVm-nvz0wRvTUfr8k-Ha4dojizqhkg&s"
+      },
+      {
+        name: "Vix",
+        slug: "vix",
+        domains: ["vix.com", "vix.com/br"],
+        price: 'Grátis',
+        icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/ViX_Logo.svg/1200px-ViX_Logo.svg.png"
+      },
+      {
+        name: "Pluto TV",
+        slug: "plutotv",
+        domains: ["pluto.tv"],
+        price: 'Grátis',
+        icon: "https://static.cdnlogo.com/logos/p/86/pluto-tv.svg"
+      },
+      {
+        name: "Rakuten TV",
+        slug: "rakuten",
+        domains: ["rakuten.tv"],
+        price: 'Grátis ou Aluguel', 
+        icon: "https://static.cdnlogo.com/logos/r/67/rakuten_800.png"
+      },
+      {
+        name: "MUBI",
+        slug: "mubi",
+        domains: ["mubi.com"],
+        price: "R$ 29,90",
+        icon: "https://static.cdnlogo.com/logos/m/80/mubi.svg"
+      },
+      {
+        name: "Filmelier",
+        slug: "filmelier",
+        domains: ["filmelier.com"],
+        price: 'A consultar',
+        icon: "https://media.filmelier.com/noticias/br/2024/05/logo-filmelier-interna.png"
+      },
     ]
 
     // Detecta plataforma pela URL
     const detectPlatformFromUrl = (url) => {
       if (!url) return null
-      
+
       try {
         const urlObj = new URL(url)
         const hostname = urlObj.hostname.replace('www.', '')
-        
+
         // Procura plataforma que contém o domínio
         for (const platform of streamingPlatforms) {
           for (const domain of platform.domains) {
@@ -1218,25 +1250,25 @@ export default {
       } catch (e) {
         console.warn('Erro ao parsear URL:', url, e)
       }
-      
+
       return null
     }
 
     // Enriquece dados de plataforma com informações locais
     const enrichPlatformData = (item) => {
       const enriched = { ...item }
-      
+
       // Se não tem plataforma ou é "Unknown", tentar detectar pela URL
       if (!enriched.platform || enriched.platform === 'Unknown') {
         const detected = detectPlatformFromUrl(enriched.url)
         if (detected) {
           enriched.platform = detected.name
-          
+
           // Preencher ícone se estiver faltando
           if (!enriched.icon) {
             enriched.icon = detected.icon
           }
-          
+
           // Preencher preço se estiver faltando (apenas para FLATRATE)
           if (!enriched.price && enriched.type === 'FLATRATE' && detected.price) {
             enriched.price = detected.price
@@ -1244,11 +1276,11 @@ export default {
         }
       } else {
         // Se tem plataforma mas falta ícone ou preço, buscar na tabela
-        const platformData = streamingPlatforms.find(p => 
+        const platformData = streamingPlatforms.find(p =>
           p.name.toLowerCase() === enriched.platform.toLowerCase() ||
           enriched.platform.toLowerCase().includes(p.slug)
         )
-        
+
         if (platformData) {
           if (!enriched.icon) {
             enriched.icon = platformData.icon
@@ -1258,7 +1290,7 @@ export default {
           }
         }
       }
-      
+
       return enriched
     }
 
@@ -1267,7 +1299,7 @@ export default {
       if (!movie.value || !movie.value.justwatch_watch_info) {
         return []
       }
-      
+
       const data = movie.value.justwatch_watch_info
       if (!Array.isArray(data) || data.length === 0) {
         return []
@@ -1339,7 +1371,7 @@ export default {
       if (!movie.value?.images?.posters) {
         return []
       }
-      
+
       const seenUrls = new Set()
       return movie.value.images.posters.filter(img => {
         if (!img.url) return false
@@ -1353,7 +1385,7 @@ export default {
       if (!movie.value?.images?.backdrops) {
         return []
       }
-      
+
       const seenUrls = new Set()
       return movie.value.images.backdrops.filter(img => {
         if (!img.url) return false
@@ -1800,7 +1832,7 @@ export default {
   .movie-detail-header {
     min-height: 400px;
   }
-  
+
   .movie-detail-content {
     padding-top: 3rem;
   }

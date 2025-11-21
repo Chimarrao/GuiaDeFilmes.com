@@ -9,18 +9,60 @@ use Illuminate\Support\Facades\Log;
 
 class DownloadTrailers extends Command
 {
+    /**
+     * Assinatura do comando
+     *
+     * @var string
+     */
     protected $signature = 'trailers:download {--ids= : IDs IMDB específicos separados por vírgula} {--limit= : Limite máximo de filmes para processar}';
+
+    /**
+     * Descrição do comando
+     *
+     * @var string
+     */
     protected $description = 'Baixa trailers do IMDB e faz upload para GitHub CDN';
 
+    /**
+     * Contador total de filmes processados
+     *
+     * @var int
+     */
     private int $totalProcessed = 0;
+
+    /**
+     * Contador de sucessos
+     *
+     * @var int
+     */
     private int $totalSuccess = 0;
+
+    /**
+     * Contador de falhas
+     *
+     * @var int
+     */
     private int $totalFailed = 0;
+
+    /**
+     * Contador de filmes ignorados
+     *
+     * @var int
+     */
     private int $totalSkipped = 0;
 
+    /**
+     * Executa o comando de download de trailers
+     *
+     * Processa filmes do banco de dados ou IDs específicos fornecidos via parâmetro,
+     * baixa trailers, comprime se necessário e faz upload para GitHub.
+     *
+     * @return int Código de saída do comando
+     */
     public function handle()
     {
         // Aumentar limite de memória para arquivos grandes (mais conservador)
-        ini_set('memory_limit', '512M');
+        ini_set('memory_limit', '4096M');
 
         $this->info('🎬 Iniciando download de trailers...');
         $this->newLine();
@@ -36,7 +78,7 @@ class DownloadTrailers extends Command
         // Se IDs específicos foram fornecidos, processá-los
         $specificIds = $this->option('ids');
         if ($specificIds) {
-            $movies = $this->processSpecificIds($specificIds);
+            /////
         }
 
         if ($movies->isEmpty()) {
@@ -78,6 +120,14 @@ class DownloadTrailers extends Command
         return Command::SUCCESS;
     }
 
+    /**
+     * Valida as configurações necessárias para o comando
+     *
+     * Verifica se todas as variáveis de ambiente necessárias estão configuradas
+     * no arquivo .env para o funcionamento correto do comando.
+     *
+     * @return bool True se todas as configurações estão válidas, false caso contrário
+     */
     private function validateConfig(): bool
     {
         $required = [
@@ -106,6 +156,14 @@ class DownloadTrailers extends Command
         return true;
     }
 
+    /**
+     * Busca filmes elegíveis para processamento
+     *
+     * Retorna uma coleção de filmes que ainda não possuem trailer baixado,
+     * ordenados por popularidade. Suporta limite de quantidade e IDs específicos.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection Coleção de filmes elegíveis
+     */
     private function getEligibleMovies()
     {
         // IDs específicos passados como parâmetro
@@ -147,6 +205,15 @@ class DownloadTrailers extends Command
         return $movies;
     }
 
+    /**
+     * Processa um filme individual
+     *
+     * Executa todo o fluxo de processamento para um filme: download do trailer,
+     * compressão se necessário, upload para GitHub e atualização do banco de dados.
+     *
+     * @param \App\Models\Movie $movie Instância do modelo Movie a ser processado
+     * @return void
+     */
     private function processMovie($movie): void
     {
         $imdbId = $movie->external_ids['imdb_id'] ?? false;
@@ -196,6 +263,16 @@ class DownloadTrailers extends Command
         Log::info("Trailer processado com sucesso para {$movie->title}: {$cdnUrl}");
     }
 
+    /**
+     * Baixa vídeo do trailer do IMDB
+     *
+     * Faz o download do trailer usando a API do IMDB, verifica o tamanho do arquivo,
+     * comprime se necessário (para arquivos maiores que 20MB) e retorna os dados
+     * preparados para upload.
+     *
+     * @param string $imdbId ID do filme no IMDB (formato ttXXXXXXX)
+     * @return array|null Dados do vídeo ou null se falhar
+     */
     private function downloadVideo(string $imdbId): ?array
     {
         $tempFile = null;
@@ -267,6 +344,17 @@ class DownloadTrailers extends Command
         }
     }
 
+    /**
+     * Faz upload do vídeo para o GitHub
+     *
+     * Envia o vídeo comprimido para o repositório GitHub configurado e retorna
+     * a URL da CDN para acesso público ao arquivo.
+     *
+     * @param array $videoData Dados do vídeo (conteúdo base64, extensão, etc.)
+     * @param string $imdbId ID do filme no IMDB
+     * @param string $movieTitle Título do filme para nome do arquivo
+     * @return string|null URL da CDN ou null se falhar
+     */
     private function uploadToGitHub(array $videoData, string $imdbId, string $movieTitle): ?string
     {
         try {
@@ -307,6 +395,15 @@ class DownloadTrailers extends Command
         }
     }
 
+    /**
+     * Sanitiza o nome do arquivo para uso seguro
+     *
+     * Remove caracteres especiais e espaços, substituindo por hífens,
+     * e limita o tamanho máximo do nome.
+     *
+     * @param string $name Nome original do arquivo
+     * @return string Nome sanitizado
+     */
     private function sanitizeFileName(string $name): string
     {
         // Remove espaços e caracteres especiais
@@ -317,6 +414,14 @@ class DownloadTrailers extends Command
         return substr($name, 0, 50);
     }
 
+    /**
+     * Obtém extensão do arquivo a partir do tipo de conteúdo
+     *
+     * Mapeia tipos MIME de vídeo para extensões de arquivo apropriadas.
+     *
+     * @param string $contentType Tipo MIME do conteúdo
+     * @return string Extensão do arquivo (mp4 por padrão)
+     */
     private function getExtensionFromContentType(string $contentType): string
     {
         $map = [
@@ -336,6 +441,14 @@ class DownloadTrailers extends Command
         return 'mp4'; // fallback
     }
 
+    /**
+     * Exibe o relatório final do processamento
+     *
+     * Mostra estatísticas completas do processamento incluindo sucessos,
+     * falhas, ignorados e taxa de sucesso.
+     *
+     * @return void
+     */
     private function displayFinalReport(): void
     {
         $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -358,6 +471,15 @@ class DownloadTrailers extends Command
         $this->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
+    /**
+     * Comprime vídeo usando script Python
+     *
+     * Executa o script de compressão Python com otimizações específicas
+     * para cada sistema operacional (Windows/Linux).
+     *
+     * @param string $filePath Caminho para o arquivo de vídeo a ser comprimido
+     * @return bool True se a compressão foi bem-sucedida, false caso contrário
+     */
     private function compressVideo(string $filePath): bool
     {
         try {
@@ -428,29 +550,29 @@ class DownloadTrailers extends Command
         }
     }
 
+    /**
+     * Lê arquivo e converte para base64
+     *
+     * Lê o conteúdo completo do arquivo e o codifica em base64
+     * para envio via API do GitHub.
+     *
+     * @param string $filePath Caminho para o arquivo a ser lido
+     * @return string Conteúdo do arquivo em base64
+     */
     private function readFileAsBase64(string $filePath): string
     {
-        // Para arquivos pequenos (< 10MB), usar método tradicional
-        $fileSize = filesize($filePath);
-        if ($fileSize < 10 * 1024 * 1024) {
-            return base64_encode(file_get_contents($filePath));
-        }
-
-        // Para arquivos grandes, ler em chunks para economizar memória
-        $handle = fopen($filePath, 'rb');
-        $base64 = '';
-
-        if ($handle) {
-            while (!feof($handle)) {
-                $chunk = fread($handle, 8192); // Ler 8KB por vez
-                $base64 .= base64_encode($chunk);
-            }
-            fclose($handle);
-        }
-
-        return $base64;
+        return base64_encode(file_get_contents($filePath));
     }
 
+    /**
+     * Formata bytes em formato legível
+     *
+     * Converte bytes em unidades apropriadas (B, KB, MB, GB, TB)
+     * com duas casas decimais.
+     *
+     * @param int $bytes Número de bytes
+     * @return string String formatada com unidade
+     */
     private function formatBytes(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];

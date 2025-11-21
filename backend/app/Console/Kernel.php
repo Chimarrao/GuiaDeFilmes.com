@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('cache:clear')->dailyAt('00:00');
         $schedule->command('cache:generate')->dailyAt('00:00');
+
+        $schedule->command('justwatch:backfill --limit=1000')->dailyAt('01:00');
+        $schedule->command('trailers:download --limit=50')->dailyAt('02:00');
     }
 
     /**
@@ -24,5 +27,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\JustwatchBackfill::class,
         \App\Console\Commands\CacheMovies::class,
         \App\Console\Commands\GenerateSitemap::class,
+        \App\Console\Commands\DownloadTrailers::class,
     ];
 }

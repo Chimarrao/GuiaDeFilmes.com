@@ -58,7 +58,7 @@ class JustwatchBackfill extends Command
         }
         // Caso padrão: apenas NULL
         else {
-            $query->whereNull('justwatch_watch_info');
+            $query->whereNull('justwatch_watch_info')->where('tmdb_id', '!=', null);
         }
 
         if ($startId) {
@@ -69,7 +69,7 @@ class JustwatchBackfill extends Command
             $query->limit($limit);
         }
 
-        $movies = $query->get();
+        $movies = $query->inRandomOrder()->get();
         $total  = $movies->count();
 
         if ($total === 0) {

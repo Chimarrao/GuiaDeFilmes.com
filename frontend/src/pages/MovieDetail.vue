@@ -359,7 +359,11 @@
                 <div v-for="video in videos" :key="video.key" class="horizontal-scroll-item video-card">
                   <div class="box video-box" style="background-color: var(--background-card);">
                     <div class="video-thumbnail" @click="openVideo(video.url)">
-                      <img :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
+                      <!-- Thumbnail do YouTube ou placeholder para vídeos CDN -->
+                      <img v-if="video.site !== 'CDN'" :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
+                      <div v-else class="cdn-video-placeholder">
+                        <i class="fas fa-film fa-3x"></i>
+                      </div>
                       <div class="play-overlay">
                         <span class="icon is-large has-text-danger">
                           <i class="fas fa-play-circle fa-3x"></i>
@@ -369,6 +373,7 @@
                     <p class="has-text-white mt-2">{{ video.name }}</p>
                     <p class="has-text-white-ter is-size-7">
                       {{ video.official ? '✓ Oficial' : '' }}
+                      {{ video.site === 'CDN' ? ' (IMDB)' : '' }}
                     </p>
                   </div>
                 </div>
@@ -377,7 +382,11 @@
                 <div v-for="video in videos" :key="video.key" class="column is-one-third">
                   <div class="box video-box" style="background-color: var(--background-card);">
                     <div class="video-thumbnail" @click="openVideo(video.url)">
-                      <img :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
+                      <!-- Thumbnail do YouTube ou placeholder para vídeos CDN -->
+                      <img v-if="video.site !== 'CDN'" :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
+                      <div v-else class="cdn-video-placeholder">
+                        <i class="fas fa-film fa-3x"></i>
+                      </div>
                       <div class="play-overlay">
                         <span class="icon is-large has-text-danger">
                           <i class="fas fa-play-circle fa-3x"></i>
@@ -387,6 +396,7 @@
                     <p class="has-text-white mt-2">{{ video.name }}</p>
                     <p class="has-text-white-ter is-size-7">
                       {{ video.official ? '✓ Oficial' : '' }}
+                      {{ video.site === 'CDN' ? ' (IMDB)' : '' }}
                     </p>
                   </div>
                 </div>
@@ -636,14 +646,8 @@ export default {
         movie.value = store.currentMovie
 
         if (movie.value) {
-          // Debug sinopse
-          if (movie.value.ai_content && movie.value.ai_content.ai_synopsis) {
-          } else {
-          }
-
-          // Temporariamente desabilitado para debug
-          // updateMetaTags()
-        } else {
+          // Atualizar meta tags do documento
+          updateMetaTags()
         }
       } catch (error) {
         console.error('Erro ao carregar filme:', error)
@@ -722,7 +726,8 @@ export default {
     }
 
     const getSynopsis = () => {
-      return movie.value?.synopsis || 'Sinopse não disponível'
+      // Priorizar sinopse normal, depois IMDB, depois mensagem padrão
+      return movie.value?.synopsis || movie.value?.imdb_synopsis || 'Sinopse não disponível'
     }
 
     const getGenreLink = (genre) => {
@@ -1032,7 +1037,8 @@ export default {
     }
 
     const hasVideos = () => {
-      return movie.value.videos && movie.value.videos.length > 0
+      // Tem vídeos do TMDB ou trailer do IMDB
+      return (movie.value.videos && movie.value.videos.length > 0) || movie.value.imdb_trailer_url
     }
 
     const hasPhotos = () => {
@@ -1042,10 +1048,6 @@ export default {
     }
 
     const groupedVideos = computed(() => {
-      if (!movie.value?.videos) {
-        return {}
-      }
-
       const groups = {}
       const typeTranslation = {
         'Trailer': 'Trailers',
@@ -1055,13 +1057,31 @@ export default {
         'Featurette': 'Making Of'
       }
 
-      movie.value.videos.forEach(video => {
-        const type = typeTranslation[video.type] || video.type
-        if (!groups[type]) {
-          groups[type] = []
+      // Adicionar vídeos do TMDB
+      if (movie.value?.videos) {
+        movie.value.videos.forEach(video => {
+          const type = typeTranslation[video.type] || video.type
+          if (!groups[type]) {
+            groups[type] = []
+          }
+          groups[type].push(video)
+        })
+      }
+
+      // Adicionar trailer do IMDB se disponível
+      if (movie.value?.imdb_trailer_url) {
+        if (!groups['Trailers']) {
+          groups['Trailers'] = []
         }
-        groups[type].push(video)
-      })
+        groups['Trailers'].push({
+          key: 'imdb-trailer',
+          name: 'Trailer IMDB',
+          url: movie.value.imdb_trailer_url,
+          type: 'Trailer',
+          official: true,
+          site: 'CDN'
+        })
+      }
 
       return groups
     })
@@ -1402,7 +1422,14 @@ export default {
     }
 
     const openVideo = (url) => {
-      window.open(url, '_blank')
+      // Se for URL do CDN (trailer IMDB), abrir no player nativo
+      if (url && (url.includes('.mp4') || url.includes('.webm') || url.includes('cdn.jsdelivr.net'))) {
+        // Criar modal de vídeo ou abrir em nova aba
+        window.open(url, '_blank')
+      } else {
+        // URLs do YouTube
+        window.open(url, '_blank')
+      }
     }
 
     const openLightbox = (imageUrl) => {
@@ -1672,6 +1699,17 @@ export default {
 
 .video-thumbnail:hover .play-overlay {
   opacity: 1;
+}
+
+.cdn-video-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  border-radius: 8px;
 }
 
 .photo-item {

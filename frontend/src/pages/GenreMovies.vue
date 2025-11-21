@@ -206,6 +206,18 @@ export default {
     const genreName = computed(() => genresMap[genreSlug.value]?.name || genreSlug.value)
     const genreIcon = computed(() => genresMap[genreSlug.value]?.icon || 'fa-film')
 
+    // Atualizar title quando o gênero mudar
+    watch(genreName, (newGenreName) => {
+      if (newGenreName) {
+        useHead({
+          title: `${newGenreName} - Explorar - Guia de Filmes`,
+          meta: [
+            { name: 'description', content: `Descubra os filmes mais populares do gênero ${newGenreName}` }
+          ]
+        })
+      }
+    }, { immediate: true })
+
     /**
      * Mapeamento de imagens de fundo disponíveis para cada gênero
      * Apenas gêneros com imagens convertidas para WebP são listados
@@ -230,11 +242,6 @@ export default {
      * @returns {string|null} URL da imagem ou null se não houver
      */
     const genreBackgroundImage = computed(() => genreBackgrounds[genreSlug.value] || null)
-
-    useHead({
-      title: `${genreName.value} - Explorar - Guia de Filmes`,
-      description: `Descubra os filmes mais populares do gênero ${genreName.value}`,
-    })
 
     /**
      * Busca filmes do gênero atual com filtros aplicados

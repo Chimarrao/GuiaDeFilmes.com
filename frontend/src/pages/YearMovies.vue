@@ -230,10 +230,17 @@ export default {
       return `Filmes de ${info.start} a ${info.end}`
     })
 
-    useHead({
-      title: `${decadeLabel.value} - Explorar - Guia de Filmes`,
-      description: `Descubra filmes ${decadeRange.value}`,
-    })
+    // Atualizar title quando a década mudar
+    watch(decadeLabel, (newLabel) => {
+      if (newLabel) {
+        useHead({
+          title: `${newLabel} - Explorar - Guia de Filmes`,
+          meta: [
+            { name: 'description', content: `Descubra filmes ${decadeRange.value}` }
+          ]
+        })
+      }
+    }, { immediate: true })
 
     /**
      * Busca filmes de uma década específica com paginação

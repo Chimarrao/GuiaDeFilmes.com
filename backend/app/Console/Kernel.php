@@ -9,10 +9,13 @@ class Kernel extends ConsoleKernel
 {
     /**
      * Define the application's command schedule.
+     * 
+     * NOTA: cache:generate agora faz swap atômico (TEMP_ -> definitivo)
+     * Por isso não é mais necessário rodar cache:clear antes (zero downtime!)
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('cache:clear')->dailyAt('00:00');
+        // Cache com troca atômica (zero downtime)
         $schedule->command('cache:generate')->dailyAt('00:00');
 
         $schedule->command('justwatch:backfill --limit=1000')->dailyAt('01:00');

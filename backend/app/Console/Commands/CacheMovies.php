@@ -13,7 +13,13 @@ class CacheMovies extends Command
 {
     protected $signature = 'cache:generate';
 
-    protected $description = 'Gera cache de páginas de filmes';
+    protected $description = 'Gera cache de páginas de filmes com troca atômica (zero downtime)';
+
+    // Prefixo para cache temporário durante geração
+    private const TEMP_PREFIX = 'TEMP_';
+    
+    // Array para armazenar estatísticas de cache
+    private array $cacheStats = [];
 
     /**
      * Execute the console command.
@@ -25,7 +31,11 @@ class CacheMovies extends Command
         // Garantir que os diretórios de cache existam
         $this->ensureCacheDirectories();
         
-        $this->info('🔥 Iniciando warmup de cache COMPLETO...');
+        $this->info('🔥 Iniciando warmup de cache COMPLETO (com troca atômica)...');
+        $this->newLine();
+        
+        // FASE 1: Gerar todos os caches com prefixo TEMP_
+        $this->info('📝 FASE 1: Gerando caches temporários...');
         $this->newLine();
         
         // ENDPOINT: /movies/upcoming
@@ -49,8 +59,22 @@ class CacheMovies extends Command
         // ENDPOINT: /countries (lista de países com contagem)
         $this->warmupCountriesList();
         
-        // ENDPOINT: /movies/filter?genre={genre} (cache de todos os gêneros, até página 10)
+        // ENDPOINT: /movies/filter?genre={genre} (cache de todos os gêneros)
         $this->warmupFilterGenres();
+        
+        // FASE 2: Trocar caches atomicamente (swap TEMP_ -> definitivo)
+        $this->newLine();
+        $this->info('⚡ FASE 2: Trocando caches atomicamente (zero downtime)...');
+        $this->swapTempCaches();
+        
+        // FASE 3: Limpar caches antigos
+        $this->newLine();
+        $this->info('🧹 FASE 3: Limpando caches antigos...');
+        $this->cleanupOldCaches();
+        
+        // FASE 4: Relatório final
+        $this->newLine();
+        $this->generateCacheReport();
         
         $this->newLine();
         $this->info('✅ Cache completo gerado com sucesso!');
@@ -113,18 +137,19 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/upcoming
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs pré-ordenados usando MovieOrdering (200 filmes = 10 páginas)
+     * - Cache de IDs pré-ordenados usando MovieOrdering (ILIMITADO - todos os filmes)
      * - Mescla filmes com ordenação customizada + filmes automáticos
      * - Cache de contagem total
      * - TTL: 86400s - aumentado para reduzir regenerações
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupUpcoming(): void
     {
         $this->info('📅 Gerando LANÇAMENTOS (Upcoming)...');
         
-        // Cache de IDs pré-ordenados
-        $cacheKey = "upcoming_ids_v1";
-        $movieIds = Cache::remember($cacheKey, 86400, function () {
+        // Cache de IDs pré-ordenados com prefixo TEMP_
+        $tempKey = self::TEMP_PREFIX . "upcoming_ids_v1";
+        $movieIds = Cache::remember($tempKey, 86400, function () {
             // Buscar ordenação customizada
             $ordering = \App\Models\MovieOrdering::first();
             $customOrder = $ordering ? ($ordering->upcoming ?? []) : [];
@@ -149,27 +174,22 @@ class CacheMovies extends Command
                     }
                 }
                 
-                // Completar com filmes automáticos (excluindo os já adicionados)
-                $remaining = 200 - count($finalIds);
-                if ($remaining > 0) {
-                    $autoIds = Movie::where('status', 'upcoming')
-                        ->whereNotIn('tmdb_id', $tmdbIds)
-                        ->where('adult', 0)
-                        ->orderBy('release_date', 'asc')
-                        ->orderBy('popularity', 'desc')
-                        ->limit($remaining)
-                        ->pluck('id')
-                        ->toArray();
-                    
-                    $finalIds = array_merge($finalIds, $autoIds);
-                }
+                // Completar com TODOS os filmes automáticos (excluindo os já adicionados)
+                $autoIds = Movie::where('status', 'upcoming')
+                    ->whereNotIn('tmdb_id', $tmdbIds)
+                    ->where('adult', 0)
+                    ->orderBy('release_date', 'asc')
+                    ->orderBy('popularity', 'desc')
+                    ->pluck('id')
+                    ->toArray();
+                
+                $finalIds = array_merge($finalIds, $autoIds);
             } else {
-                // Sem ordenação customizada, usar apenas ordenação automática
+                // Sem ordenação customizada, buscar TODOS os filmes com ordenação automática
                 $finalIds = Movie::where('status', 'upcoming')
                     ->where('adult', 0)
                     ->orderBy('release_date', 'asc')
                     ->orderBy('popularity', 'desc')
-                    ->limit(200)
                     ->pluck('id')
                     ->toArray();
             }
@@ -177,13 +197,18 @@ class CacheMovies extends Command
             return $finalIds;
         });
         
-        // Cache de contagem total
-        $totalCount = Cache::remember('upcoming_total_count', 86400, function () {
+        // Cache de contagem total com prefixo TEMP_
+        $tempCountKey = self::TEMP_PREFIX . 'upcoming_total_count';
+        $totalCount = Cache::remember($tempCountKey, 86400, function () {
             return Movie::where('status', 'upcoming')->where('adult', 0)->count();
         });
         
-        $this->info("  ✓ Cache: {$cacheKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
-        $this->info("  ✓ Cache: upcoming_total_count");
+        // Registrar estatísticas
+        $this->trackCacheStats($tempKey, $movieIds);
+        $this->trackCacheStats($tempCountKey, $totalCount);
+        
+        $this->info("  ✓ Cache: {$tempKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
+        $this->info("  ✓ Cache: {$tempCountKey}");
     }
 
     /**
@@ -191,18 +216,19 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/in-theaters
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs pré-ordenados usando MovieOrdering (200 filmes = 10 páginas)
+     * - Cache de IDs pré-ordenados usando MovieOrdering (ILIMITADO - todos os filmes)
      * - Mescla filmes com ordenação customizada + filmes automáticos
      * - Cache de contagem total
      * - TTL: 86400s - aumentado para reduzir regenerações
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupInTheaters(): void
     {
         $this->info('🎬 Gerando EM CARTAZ (In Theaters)...');
         
-        // Cache de IDs pré-ordenados
-        $cacheKey = "in_theaters_ids_v1";
-        $movieIds = Cache::remember($cacheKey, 86400, function () {
+        // Cache de IDs pré-ordenados com prefixo TEMP_
+        $tempKey = self::TEMP_PREFIX . "in_theaters_ids_v1";
+        $movieIds = Cache::remember($tempKey, 86400, function () {
             // Buscar ordenação customizada
             $ordering = \App\Models\MovieOrdering::first();
             $customOrder = $ordering ? ($ordering->in_theaters ?? []) : [];
@@ -227,27 +253,22 @@ class CacheMovies extends Command
                     }
                 }
                 
-                // Completar com filmes automáticos (excluindo os já adicionados)
-                $remaining = 200 - count($finalIds);
-                if ($remaining > 0) {
-                    $autoIds = Movie::where('status', 'in_theaters')
-                        ->whereNotIn('tmdb_id', $tmdbIds)
-                        ->where('adult', 0)
-                        ->orderBy('release_date', 'desc')
-                        ->orderBy('popularity', 'desc')
-                        ->limit($remaining)
-                        ->pluck('id')
-                        ->toArray();
-                    
-                    $finalIds = array_merge($finalIds, $autoIds);
-                }
+                // Completar com TODOS os filmes automáticos (excluindo os já adicionados)
+                $autoIds = Movie::where('status', 'in_theaters')
+                    ->whereNotIn('tmdb_id', $tmdbIds)
+                    ->where('adult', 0)
+                    ->orderBy('release_date', 'desc')
+                    ->orderBy('popularity', 'desc')
+                    ->pluck('id')
+                    ->toArray();
+                
+                $finalIds = array_merge($finalIds, $autoIds);
             } else {
-                // Sem ordenação customizada, usar apenas ordenação automática
+                // Sem ordenação customizada, buscar TODOS os filmes com ordenação automática
                 $finalIds = Movie::where('status', 'in_theaters')
                     ->where('adult', 0)
                     ->orderBy('release_date', 'desc')
                     ->orderBy('popularity', 'desc')
-                    ->limit(200)
                     ->pluck('id')
                     ->toArray();
             }
@@ -255,13 +276,18 @@ class CacheMovies extends Command
             return $finalIds;
         });
         
-        // Cache de contagem total
-        $totalCount = Cache::remember('in_theaters_total_count', 86400, function () {
+        // Cache de contagem total com prefixo TEMP_
+        $tempCountKey = self::TEMP_PREFIX . 'in_theaters_total_count';
+        $totalCount = Cache::remember($tempCountKey, 86400, function () {
             return Movie::where('status', 'in_theaters')->where('adult', 0)->count();
         });
         
-        $this->info("  ✓ Cache: {$cacheKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
-        $this->info("  ✓ Cache: in_theaters_total_count");
+        // Registrar estatísticas
+        $this->trackCacheStats($tempKey, $movieIds);
+        $this->trackCacheStats($tempCountKey, $totalCount);
+        
+        $this->info("  ✓ Cache: {$tempKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
+        $this->info("  ✓ Cache: {$tempCountKey}");
     }
 
     /**
@@ -269,10 +295,11 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/released
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs pré-ordenados (200 filmes = 10 páginas)
+     * - Cache de IDs pré-ordenados (ILIMITADO - todos os filmes)
      * - Cache de contagem total
      * - TTL: 86400s - dados mais estáveis
      * - Released normalmente não usa ordenação customizada, mas mantemos suporte
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupReleased(): void
     {
@@ -280,9 +307,9 @@ class CacheMovies extends Command
         
         $currentYear = now()->year;
         
-        // Cache de IDs pré-ordenados
-        $cacheKey = "released_ids_v1";
-        $movieIds = Cache::remember($cacheKey, 86400, function () use ($currentYear) {
+        // Cache de IDs pré-ordenados com prefixo TEMP_
+        $tempKey = self::TEMP_PREFIX . "released_ids_v1";
+        $movieIds = Cache::remember($tempKey, 86400, function () use ($currentYear) {
             // Buscar ordenação customizada (embora released raramente use)
             $ordering = \App\Models\MovieOrdering::first();
             $customOrder = $ordering ? ($ordering->released ?? []) : [];
@@ -307,25 +334,20 @@ class CacheMovies extends Command
                     }
                 }
                 
-                // Completar com filmes automáticos (excluindo os já adicionados)
-                $remaining = 200 - count($finalIds);
-                if ($remaining > 0) {
-                    $autoIds = Movie::where('status', 'released')
-                        ->whereNotIn('tmdb_id', $tmdbIds)
-                        ->where('adult', 0)
-                        ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
-                        ->limit($remaining)
-                        ->pluck('id')
-                        ->toArray();
-                    
-                    $finalIds = array_merge($finalIds, $autoIds);
-                }
+                // Completar com TODOS os filmes automáticos (excluindo os já adicionados)
+                $autoIds = Movie::where('status', 'released')
+                    ->whereNotIn('tmdb_id', $tmdbIds)
+                    ->where('adult', 0)
+                    ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
+                    ->pluck('id')
+                    ->toArray();
+                
+                $finalIds = array_merge($finalIds, $autoIds);
             } else {
-                // Sem ordenação customizada, usar apenas ordenação automática
+                // Sem ordenação customizada, buscar TODOS os filmes com ordenação automática
                 $finalIds = Movie::where('status', 'released')
                     ->where('adult', 0)
                     ->orderByRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) DESC, tmdb_vote_count DESC')
-                    ->limit(200)
                     ->pluck('id')
                     ->toArray();
             }
@@ -333,16 +355,21 @@ class CacheMovies extends Command
             return $finalIds;
         });
         
-        // Cache de contagem total
-        $totalCount = Cache::remember('released_total_count', 86400, function () use ($currentYear) {
+        // Cache de contagem total com prefixo TEMP_
+        $tempCountKey = self::TEMP_PREFIX . 'released_total_count';
+        $totalCount = Cache::remember($tempCountKey, 86400, function () use ($currentYear) {
             return Movie::whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) >= ?', [$currentYear - 2])
                 ->whereRaw('CAST(substr(release_date, 1, 4) AS UNSIGNED) <= ?', [$currentYear])
                 ->where('adult', 0)
                 ->count();
         });
         
-        $this->info("  ✓ Cache: {$cacheKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
-        $this->info("  ✓ Cache: released_total_count");
+        // Registrar estatísticas
+        $this->trackCacheStats($tempKey, $movieIds);
+        $this->trackCacheStats($tempCountKey, $totalCount);
+        
+        $this->info("  ✓ Cache: {$tempKey} ({$totalCount} filmes, " . count($movieIds) . " em cache)");
+        $this->info("  ✓ Cache: {$tempCountKey}");
     }
 
     /**
@@ -350,9 +377,11 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/genre/{genre}
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs por gênero (até 200 filmes por gênero)
+     * - Cache de IDs por gênero (ILIMITADO - todos os filmes por gênero)
      * - Usa JSON_CONTAINS para aproveitar índice idx_genres_json
      * - TTL: 86400s (2 horas)
+     * - Usa enum GenreSlug para obter todos os gêneros
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      * 
      * IMPORTANTE: 
      * - Esta query usa JSON_CONTAINS que é otimizada para campos JSON
@@ -362,50 +391,37 @@ class CacheMovies extends Command
     {
         $this->info('🎭 Gerando GÊNEROS...');
         
-        // Usa enum GenreSlug para obter todos os gêneros
-        $genres = [
-            'acao' => 'Ação',
-            'animacao' => 'Animação',
-            'aventura' => 'Aventura',
-            'comedia' => 'Comédia',
-            'crime' => 'Crime',
-            'documentario' => 'Documentário',
-            'drama' => 'Drama',
-            'familia' => 'Família',
-            'fantasia' => 'Fantasia',
-            'faroeste' => 'Faroeste',
-            'ficcao-cientifica' => 'Ficção científica',
-            'guerra' => 'Guerra',
-            'historia' => 'História',
-            'misterio' => 'Mistério',
-            'musica' => 'Música',
-            'romance' => 'Romance',
-            'suspense' => 'Suspense',
-            'terror' => 'Terror',
-        ];
+        // Obtém todos os gêneros do enum GenreSlug
+        $genreEnums = GenreSlug::cases();
         
-        $total = count($genres);
+        $total = count($genreEnums);
         $current = 0;
         $totalMovies = 0;
         
-        foreach ($genres as $slug => $name) {
+        foreach ($genreEnums as $genreEnum) {
             $current++;
-            $cacheKey = "genre_{$slug}_ids_v7";
+            $slug = $genreEnum->value;
+            $name = $genreEnum->label();
+            
+            $tempKey = self::TEMP_PREFIX . "genre_{$slug}_ids_v7";
             
             try {
-                $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
+                $movieIds = Cache::remember($tempKey, 86400, function () use ($name) {
                     return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($name) . '"'])
                         ->whereNotNull('release_date')
                         ->where('adult', 0)
                         ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
-                        ->limit(200)
                         ->pluck('id')
                         ->toArray();
                 });
                 
                 $count = count($movieIds);
                 $totalMovies += $count;
-                $this->line("  ✓ [{$current}/{$total}] {$name}: {$count} filmes (cache: {$cacheKey})");
+                
+                // Registrar estatísticas
+                $this->trackCacheStats($tempKey, $movieIds);
+                
+                $this->line("  ✓ [{$current}/{$total}] {$name}: {$count} filmes (cache: {$tempKey})");
             } catch (\Exception $e) {
                 $this->error("  ✗ [{$current}/{$total}] {$name}: ERRO - " . $e->getMessage());
             }
@@ -419,9 +435,10 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/decade/{decade}
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs por década (até 200 filmes por década)
+     * - Cache de IDs por década (ILIMITADO - todos os filmes por década)
      * - Usa enum DecadeRange para todos os períodos
      * - TTL: 86400s (2 horas)
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupDecades(): void
     {
@@ -439,22 +456,25 @@ class CacheMovies extends Command
             $label = $decadeEnum->label();
             [$startYear, $endYear] = $decadeEnum->range();
             
-            $cacheKey = "decade_{$slug}_ids_v2";
+            $tempKey = self::TEMP_PREFIX . "decade_{$slug}_ids_v2";
             
             try {
-                $movieIds = Cache::remember($cacheKey, 86400, function () use ($startYear, $endYear) {
+                $movieIds = Cache::remember($tempKey, 86400, function () use ($startYear, $endYear) {
                     return Movie::whereNotNull('release_date')
                         ->whereRaw("CAST(substr(release_date, 1, 4) AS UNSIGNED) BETWEEN ? AND ?", [$startYear, $endYear])
                         ->where('adult', 0)
                         ->orderBy('tmdb_vote_count', 'desc')
                         ->orderBy('popularity', 'desc')
-                        ->limit(200)
                         ->pluck('id')
                         ->toArray();
                 });
                 
                 $count = count($movieIds);
                 $totalMovies += $count;
+                
+                // Registrar estatísticas
+                $this->trackCacheStats($tempKey, $movieIds);
+                
                 $this->line("  ✓ [{$current}/{$total}] {$label}: {$count} filmes ({$startYear}-{$endYear})");
             } catch (\Exception $e) {
                 $this->error("  ✗ [{$current}/{$total}] {$label} ({$slug}): ERRO - " . $e->getMessage());
@@ -469,10 +489,11 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/country/{countryCode}
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs por país (até 200 filmes por país)
+     * - Cache de IDs por país (ILIMITADO - todos os filmes por país)
      * - Usa enum CountryCode para países modernos
      * - Usa getExtinctCountriesMap para países extintos
      * - TTL: 86400s (2 horas)
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupCountries(): void
     {
@@ -503,21 +524,23 @@ class CacheMovies extends Command
         
         foreach ($allCountries as $code => $name) {
             $current++;
-            $cacheKey = "country_{$code}_ids_v2";
+            $tempKey = self::TEMP_PREFIX . "country_{$code}_ids_v2";
             
             try {
-                $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
+                $movieIds = Cache::remember($tempKey, 86400, function () use ($name) {
                     return Movie::whereRaw("LOWER(production_countries) LIKE ?", ['%' . strtolower($name) . '%'])
                         ->where('adult', 0)
                         ->orderBy('tmdb_vote_count', 'desc')
                         ->orderBy('popularity', 'desc')
-                        ->limit(200)
                         ->pluck('id')
                         ->toArray();
                 });
                 
                 $count = count($movieIds);
                 $totalMovies += $count;
+                
+                // Registrar estatísticas
+                $this->trackCacheStats($tempKey, $movieIds);
                 
                 // Identifica países extintos
                 $extinct = isset($extinctCountries[$code]) ? ' [EXTINTO]' : '';
@@ -538,15 +561,16 @@ class CacheMovies extends Command
      * - Cache da query completa de países
      * - Inclui mapeamento com CountryCode enum + países extintos
      * - TTL: 86400s - aumentado para estabilidade
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      */
     private function warmupCountriesList(): void
     {
         $this->info('🗺️ Gerando LISTA DE PAÍSES (com contagem)...');
         
-        $cacheKey = 'countries_with_counts_v2';
+        $tempKey = self::TEMP_PREFIX . 'countries_with_counts_v2';
         
         try {
-            $countries = Cache::remember($cacheKey, 86400, function () {
+            $countries = Cache::remember($tempKey, 86400, function () {
                 $results = DB::select(<<<SQL
                     SELECT 
                         country,
@@ -636,7 +660,10 @@ class CacheMovies extends Command
             $totalExtinct = count(array_filter($countries, fn($c) => $c['extinct'] ?? false));
             $totalMovies = array_sum(array_column($countries, 'count'));
             
-            $this->info("  ✓ Cache: {$cacheKey}");
+            // Registrar estatísticas
+            $this->trackCacheStats($tempKey, $countries);
+            
+            $this->info("  ✓ Cache: {$tempKey}");
             $this->info("  📊 {$total} países mapeados ({$totalExtinct} extintos), {$totalMovies} filmes catalogados");
         } catch (\Exception $e) {
             $this->error("  ✗ ERRO ao gerar cache de países: " . $e->getMessage());
@@ -648,10 +675,12 @@ class CacheMovies extends Command
      * Endpoint: GET /movies/filter?genre={genre}
      * 
      * OTIMIZAÇÃO:
-     * - Cache de IDs por gênero (até 200 filmes = 10 páginas)
+     * - Cache de IDs por gênero (ILIMITADO - todos os filmes)
      * - Chave: filter_genre_{slug}_ids_v1
      * - Ordenação: release_year DESC, tmdb_vote_count DESC
      * - TTL: 86400s (2 horas)
+     * - Usa enum GenreSlug para obter todos os gêneros
+     * - Usa prefixo TEMP_ durante geração para swap atômico
      * 
      * DIFERENÇA vs /movies/genre/{genre}:
      * - /movies/genre/{genre} usa JSON_CONTAINS (index idx_genres_json)
@@ -659,57 +688,165 @@ class CacheMovies extends Command
      */
     private function warmupFilterGenres(): void
     {
-        $this->info('🎬 Gerando FILTRO DE GÊNEROS (filter endpoint, até página 10)...');
+        $this->info('🎬 Gerando FILTRO DE GÊNEROS (filter endpoint)...');
         
-        // Usa enum GenreSlug para obter todos os gêneros
-        $genres = [
-            'acao' => 'Ação',
-            'animacao' => 'Animação',
-            'aventura' => 'Aventura',
-            'comedia' => 'Comédia',
-            'crime' => 'Crime',
-            'documentario' => 'Documentário',
-            'drama' => 'Drama',
-            'familia' => 'Família',
-            'fantasia' => 'Fantasia',
-            'faroeste' => 'Faroeste',
-            'ficcao-cientifica' => 'Ficção científica',
-            'guerra' => 'Guerra',
-            'historia' => 'História',
-            'misterio' => 'Mistério',
-            'musica' => 'Música',
-            'romance' => 'Romance',
-            'suspense' => 'Suspense',
-            'terror' => 'Terror',
-        ];
+        // Obtém todos os gêneros do enum GenreSlug
+        $genreEnums = GenreSlug::cases();
         
-        $total = count($genres);
+        $total = count($genreEnums);
         $current = 0;
         $totalMovies = 0;
         
-        foreach ($genres as $slug => $name) {
+        foreach ($genreEnums as $genreEnum) {
             $current++;
-            $cacheKey = "filter_genre_{$slug}_ids_v1";
+            $slug = $genreEnum->value;
+            $name = $genreEnum->label();
+            
+            $tempKey = self::TEMP_PREFIX . "filter_genre_{$slug}_ids_v1";
             
             try {
-                $movieIds = Cache::remember($cacheKey, 86400, function () use ($name) {
+                $movieIds = Cache::remember($tempKey, 86400, function () use ($name) {
                     return Movie::whereRaw("JSON_CONTAINS(LOWER(genres), ?)", ['"' . strtolower($name) . '"'])
                         ->whereNotNull('release_date')
                         ->where('adult', 0)
                         ->orderByRaw('release_year DESC, tmdb_vote_count DESC')
-                        ->limit(200) // 10 páginas × 20 itens/página
                         ->pluck('id')
                         ->toArray();
                 });
                 
                 $count = count($movieIds);
                 $totalMovies += $count;
-                $this->line("  ✓ [{$current}/{$total}] {$name}: {$count} filmes (cache: {$cacheKey})");
+                
+                // Registrar estatísticas
+                $this->trackCacheStats($tempKey, $movieIds);
+                
+                $this->line("  ✓ [{$current}/{$total}] {$name}: {$count} filmes (cache: {$tempKey})");
             } catch (\Exception $e) {
                 $this->error("  ✗ [{$current}/{$total}] {$name}: ERRO - " . $e->getMessage());
             }
         }
         
-        $this->info("  📊 Total: {$totalMovies} registros em cache ({$total} gêneros, 10 páginas cada)");
+        $this->info("  📊 Total: {$totalMovies} registros em cache ({$total} gêneros)");
+    }
+
+    /**
+     * Registra estatísticas de uma chave de cache para relatório final
+     */
+    private function trackCacheStats(string $key, mixed $data): void
+    {
+        $serialized = serialize($data);
+        $sizeBytes = strlen($serialized);
+        
+        $this->cacheStats[] = [
+            'key' => $key,
+            'size' => $sizeBytes,
+        ];
+    }
+
+    /**
+     * Troca atomicamente todos os caches TEMP_ para suas chaves definitivas
+     * Esta operação é rápida e garante zero downtime
+     */
+    private function swapTempCaches(): void
+    {
+        $swapped = 0;
+        
+        foreach ($this->cacheStats as $stat) {
+            $tempKey = $stat['key'];
+            
+            // Verifica se é uma chave TEMP_
+            if (str_starts_with($tempKey, self::TEMP_PREFIX)) {
+                $finalKey = substr($tempKey, strlen(self::TEMP_PREFIX));
+                
+                // Pega o valor do cache temporário
+                $value = Cache::get($tempKey);
+                
+                if ($value !== null) {
+                    // Define o cache definitivo com o mesmo TTL
+                    Cache::put($finalKey, $value, 86400);
+                    $swapped++;
+                }
+            }
+        }
+        
+        $this->info("  ✓ {$swapped} caches trocados atomicamente");
+    }
+
+    /**
+     * Remove todos os caches com prefixo TEMP_ após swap bem-sucedido
+     */
+    private function cleanupOldCaches(): void
+    {
+        $deleted = 0;
+        
+        foreach ($this->cacheStats as $stat) {
+            $tempKey = $stat['key'];
+            
+            if (str_starts_with($tempKey, self::TEMP_PREFIX)) {
+                Cache::forget($tempKey);
+                $deleted++;
+            }
+        }
+        
+        $this->info("  ✓ {$deleted} caches temporários removidos");
+    }
+
+    /**
+     * Gera relatório final com tabela de estatísticas de cache
+     */
+    private function generateCacheReport(): void
+    {
+        $this->info('📋 RELATÓRIO DE CACHE');
+        $this->newLine();
+        
+        // Ordena por tamanho decrescente
+        usort($this->cacheStats, fn($a, $b) => $b['size'] <=> $a['size']);
+        
+        // Cabeçalho da tabela
+        $this->line('┌─────────────────────────────────────────────────────────┬──────────────┐');
+        $this->line('│ Chave de Cache                                          │ Tamanho      │');
+        $this->line('├─────────────────────────────────────────────────────────┼──────────────┤');
+        
+        $totalSize = 0;
+        
+        foreach ($this->cacheStats as $stat) {
+            // Remove prefixo TEMP_ para exibição
+            $displayKey = str_starts_with($stat['key'], self::TEMP_PREFIX) 
+                ? substr($stat['key'], strlen(self::TEMP_PREFIX))
+                : $stat['key'];
+            
+            $totalSize += $stat['size'];
+            
+            // Formata tamanho
+            $size = $this->formatBytes($stat['size']);
+            
+            // Ajusta tamanho da chave (max 55 chars)
+            if (strlen($displayKey) > 55) {
+                $displayKey = substr($displayKey, 0, 52) . '...';
+            }
+            
+            $this->line(sprintf('│ %-55s │ %12s │', $displayKey, $size));
+        }
+        
+        // Rodapé com total
+        $this->line('├─────────────────────────────────────────────────────────┼──────────────┤');
+        $this->line(sprintf('│ %-55s │ %12s │', 'TOTAL (' . count($this->cacheStats) . ' chaves)', $this->formatBytes($totalSize)));
+        $this->line('└─────────────────────────────────────────────────────────┴──────────────┘');
+    }
+
+    /**
+     * Formata bytes em formato legível (KB, MB, GB)
+     */
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes . ' B';
+        } elseif ($bytes < 1024 * 1024) {
+            return round($bytes / 1024, 2) . ' KB';
+        } elseif ($bytes < 1024 * 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 2) . ' MB';
+        } else {
+            return round($bytes / (1024 * 1024 * 1024), 2) . ' GB';
+        }
     }
 }

@@ -189,7 +189,7 @@ class DownloadTrailers extends Command
             $this->info("📊 Aplicando limite de {$limit} filmes");
         }
 
-        $movies = $query->get();
+        $movies = $query->inRandomOrder()->get();
 
         if ($movies->isEmpty()) {
             $this->warn('⚠️  Nenhum filme encontrado para processar.');

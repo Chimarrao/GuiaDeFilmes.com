@@ -42,6 +42,8 @@ class MovieListResource extends JsonResource
             'runtime' => $this->runtime,
             'production_countries' => $this->production_countries,
             'tagline' => $this->tagline,
+
+            'imdb_poster_url' => $this->imdb_poster_url,
             
             // Campos pesados REMOVIDOS para performance:
             // cast, crew, videos, images, similar, keywords

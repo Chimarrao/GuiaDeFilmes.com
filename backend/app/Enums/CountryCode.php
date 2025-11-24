@@ -49,6 +49,7 @@ enum CountryCode: string
     // Ásia
     case JAPAN = 'JP';
     case SOUTH_KOREA = 'KR';
+    case NORTH_KOREA = 'KP';
     case CHINA = 'CN';
     case INDIA = 'IN';
     case THAILAND = 'TH';
@@ -130,6 +131,7 @@ enum CountryCode: string
     case ARMENIA = 'AM';
     case GEORGIA = 'GE';
     case AZERBAIJAN = 'AZ';
+    case LAOS = 'LA';
 
     // Oriente Médio (continuação)
     case IRAQ = 'IQ';
@@ -137,6 +139,13 @@ enum CountryCode: string
     case JORDAN = 'JO';
     case PALESTINE = 'PS';
     case AFGHANISTAN = 'AF';
+    case QATAR = 'QA';
+    case OMAN = 'OM';
+    case KUWAIT = 'KW';
+    case BAHRAIN = 'BH';
+    case YEMEN = 'YE';
+    case LIBYA = 'LY';
+    case VATICAN = 'VA';
 
     /**
      * Retorna o nome completo do país em inglês (como no TMDB)
@@ -201,6 +210,15 @@ enum CountryCode: string
             self::PHILIPPINES => 'Philippines',
             self::MALAYSIA => 'Malaysia',
             self::VIETNAM => 'Vietnam',
+            self::LAOS => 'Laos',
+            self::NORTH_KOREA => 'North Korea',
+            self::LIBYA => 'Libya',
+            self::QATAR => 'Qatar',
+            self::OMAN => 'Oman',
+            self::KUWAIT => 'Kuwait',
+            self::BAHRAIN => 'Bahrain',
+            self::YEMEN => 'Yemen',
+            self::VATICAN => 'Vatican City',
 
             // Oceania
             self::AUSTRALIA => 'Australia',
@@ -345,6 +363,15 @@ enum CountryCode: string
             self::PHILIPPINES => 'Filipinas',
             self::MALAYSIA => 'Malásia',
             self::VIETNAM => 'Vietnã',
+            self::LAOS => 'Laos',
+            self::NORTH_KOREA => 'Coreia do Norte',
+            self::LIBYA => 'Líbia',
+            self::QATAR => 'Catar',
+            self::OMAN => 'Omã',
+            self::KUWAIT => 'Kuwait',
+            self::BAHRAIN => 'Bahrein',
+            self::YEMEN => 'Iêmen',
+            self::VATICAN => 'Vaticano',
 
             // Oceania
             self::AUSTRALIA => 'Austrália',
@@ -499,12 +526,19 @@ enum CountryCode: string
             'bosnia and herzegovina' => self::BOSNIA,
             'trinidad and tobago' => self::TRINIDAD_TOBAGO,
             
-            // Nomes antigos que foram atualizados
-            'libyan arab jamahiriya' => self::EGYPT, // Líbia não está no enum, usando Egito como proxy
+            // Nomes antigos / variações que foram atualizados
+            'libyan arab jamahiriya' => self::LIBYA,
             'macedonia' => self::MACEDONIA,
             'macao' => self::CHINA, // Macau é região administrativa da China
-            "lao people's democratic republic" => self::THAILAND, // Laos não está no enum
-            'holy see' => self::ITALY, // Vaticano não está no enum, usando Itália
+            "lao people's democratic republic" => self::LAOS,
+            'laos' => self::LAOS,
+            'lao pdr' => self::LAOS,
+            'holy see' => self::VATICAN,
+            'vatican' => self::VATICAN,
+            // North Korea aliases
+            'north korea' => self::NORTH_KOREA,
+            'democratic people\'s republic of korea' => self::NORTH_KOREA,
+            'dprk' => self::NORTH_KOREA,
         ];
         
         if (isset($nameMap[$normalized])) {

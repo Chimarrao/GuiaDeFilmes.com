@@ -72,9 +72,15 @@ export default {
   },
   methods: {
     getPosterUrl() {
+      // Prioridade: poster_url → imdb_poster_url → placeholder
       if (this.movie.poster_url) {
         return this.movie.poster_url
       }
+      
+      if (this.movie.imdb_poster_url) {
+        return this.movie.imdb_poster_url
+      }
+      
       // Placeholder melhor - usando um ícone SVG de filme
       return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"%3E%3Crect width="500" height="750" fill="%231a1a1a"/%3E%3Cpath d="M250 275L200 325H225V425H275V325H300L250 275Z M350 450H150C136.2 450 125 461.2 125 475V500C125 513.8 136.2 525 150 525H350C363.8 525 375 513.8 375 500V475C375 461.2 363.8 450 350 450Z" fill="%23e50914"/%3E%3Ctext x="250" y="600" font-family="Arial, sans-serif" font-size="20" fill="%23666" text-anchor="middle"%3ESEM POSTER%3C/text%3E%3C/svg%3E'
     },

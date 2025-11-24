@@ -358,7 +358,7 @@
               <div v-if="isMobile" class="horizontal-scroll">
                 <div v-for="video in videos" :key="video.key" class="horizontal-scroll-item video-card">
                   <div class="box video-box" style="background-color: var(--background-card);">
-                    <div class="video-thumbnail" @click="openVideo(video.url)">
+                    <div class="video-thumbnail" @click="openVideo(video)">
                       <!-- Thumbnail do YouTube ou placeholder para vídeos CDN -->
                       <img v-if="video.site !== 'CDN'" :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
                       <div v-else class="cdn-video-placeholder">
@@ -373,7 +373,6 @@
                     <p class="has-text-white mt-2">{{ video.name }}</p>
                     <p class="has-text-white-ter is-size-7">
                       {{ video.official ? '✓ Oficial' : '' }}
-                      {{ video.site === 'CDN' ? ' (IMDB)' : '' }}
                     </p>
                   </div>
                 </div>
@@ -381,7 +380,7 @@
               <div v-else class="columns is-multiline">
                 <div v-for="video in videos" :key="video.key" class="column is-one-third">
                   <div class="box video-box" style="background-color: var(--background-card);">
-                    <div class="video-thumbnail" @click="openVideo(video.url)">
+                    <div class="video-thumbnail" @click="openVideo(video)">
                       <!-- Thumbnail do YouTube ou placeholder para vídeos CDN -->
                       <img v-if="video.site !== 'CDN'" :src="`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`" :alt="video.name">
                       <div v-else class="cdn-video-placeholder">
@@ -396,7 +395,6 @@
                     <p class="has-text-white mt-2">{{ video.name }}</p>
                     <p class="has-text-white-ter is-size-7">
                       {{ video.official ? '✓ Oficial' : '' }}
-                      {{ video.site === 'CDN' ? ' (IMDB)' : '' }}
                     </p>
                   </div>
                 </div>
@@ -533,6 +531,25 @@
       </span>
       <p>Filme não encontrado</p>
       <button @click="goBack" class="button is-primary mt-4">Voltar</button>
+    </div>
+
+    <!-- Video Modal (YouTube iframe or MP4 player) -->
+    <div class="modal" :class="{ 'is-active': videoModalActive }">
+      <div class="modal-background" @click="closeVideo"></div>
+      <div class="modal-content">
+        <div class="box" style="background: transparent; box-shadow: none;">
+          <div v-if="videoModal.type === 'youtube'" class="video-embed">
+            <iframe :src="videoModal.url" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%; height:60vh;"></iframe>
+          </div>
+          <div v-else-if="videoModal.type === 'mp4'">
+            <video controls autoplay style="width:100%; max-height:70vh;">
+              <source :src="videoModal.url" type="video/mp4" />
+              Seu navegador não suporta o elemento de vídeo.
+            </video>
+          </div>
+        </div>
+      </div>
+      <button class="modal-close is-large" @click="closeVideo"></button>
     </div>
 
     <!-- Lightbox Modal -->
@@ -760,9 +777,15 @@ export default {
         return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
       }
 
+      // Prioridade: poster_url → imdb_poster_url → placeholder
       if (movie.value.poster_url) {
         return movie.value.poster_url
       }
+      
+      if (movie.value.imdb_poster_url) {
+        return movie.value.imdb_poster_url
+      }
+      
       // Imagem default para filmes sem poster
       return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
     }
@@ -1421,15 +1444,49 @@ export default {
       event.target.nextElementSibling?.classList.add('is-visible')
     }
 
-    const openVideo = (url) => {
-      // Se for URL do CDN (trailer IMDB), abrir no player nativo
-      if (url && (url.includes('.mp4') || url.includes('.webm') || url.includes('cdn.jsdelivr.net'))) {
-        // Criar modal de vídeo ou abrir em nova aba
-        window.open(url, '_blank')
-      } else {
-        // URLs do YouTube
-        window.open(url, '_blank')
+    // Estado do modal de vídeo e funções de controle
+    // Objetivo: reproduzir YouTube via iframe embed e MP4/WebM via <video> embutido
+    const videoModalActive = ref(false)
+    const videoModal = ref({ type: null, url: null, key: null })
+
+    const openVideo = (video) => {
+      if (!video) return
+
+      // Se for objeto vindo do TMDB/agrupamento
+      if (video.site && typeof video.site === 'string' && video.site.toLowerCase().includes('youtube') && video.key) {
+        videoModal.value = { type: 'youtube', key: video.key, url: `https://www.youtube.com/embed/${video.key}?autoplay=1&rel=0` }
+        videoModalActive.value = true
+        return
       }
+
+      // Se for URL direta para MP4/WebM (CDN)
+      const urlCandidate = video.url || (typeof video === 'string' ? video : null)
+      if (urlCandidate && (urlCandidate.endsWith('.mp4') || urlCandidate.endsWith('.webm') || urlCandidate.includes('cdn.jsdelivr.net'))) {
+        videoModal.value = { type: 'mp4', url: urlCandidate }
+        videoModalActive.value = true
+        return
+      }
+
+      // Se for string do YouTube (fallback), extrair key
+      if (typeof video === 'string') {
+        const u = video
+        const match = u.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,})/)
+        if (match && match[1]) {
+          const key = match[1]
+          videoModal.value = { type: 'youtube', key, url: `https://www.youtube.com/embed/${key}?autoplay=1&rel=0` }
+          videoModalActive.value = true
+          return
+        }
+      }
+
+      // Último recurso: abrir em nova aba
+      if (urlCandidate) window.open(urlCandidate, '_blank')
+    }
+
+    const closeVideo = () => {
+      videoModalActive.value = false
+      // reset para interromper o playback
+      videoModal.value = { type: null, url: null, key: null }
     }
 
     const openLightbox = (imageUrl) => {
@@ -1507,6 +1564,9 @@ export default {
       uniquePosters,
       uniqueBackdrops,
       handleImageError,
+      videoModalActive,
+      videoModal,
+      closeVideo,
       openVideo,
       openLightbox,
       closeLightbox,

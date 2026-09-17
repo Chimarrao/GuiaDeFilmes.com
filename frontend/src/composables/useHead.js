@@ -22,6 +22,16 @@ export function useHead(options) {
     })
   }
 
+  // Update canonical link (defaults to the current path, without query/hash)
+  const canonicalUrl = options.canonical || (window.location.origin + window.location.pathname)
+  let canonicalLink = document.querySelector('link[rel="canonical"]')
+  if (!canonicalLink) {
+    canonicalLink = document.createElement('link')
+    canonicalLink.setAttribute('rel', 'canonical')
+    document.head.appendChild(canonicalLink)
+  }
+  canonicalLink.setAttribute('href', canonicalUrl)
+
   // Add JSON-LD scripts
   if (options.script) {
     options.script.forEach(script => {

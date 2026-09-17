@@ -1,0 +1,33 @@
+#!/bin/bash
+# Roda automaticamente depois de "git pull" / "git merge".
+# Garante que o build do frontend (e o composer do backend, se preciso)
+# sejam refeitos quando o código-fonte correspondente mudar.
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+FILES_CHANGED="$(git diff --name-only HEAD@{1} HEAD 2>/dev/null || true)"
+
+if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
+  echo "==> Mudanças no frontend detectadas."
+  cd "$REPO_ROOT/frontend"
+
+  if echo "$FILES_CHANGED" | grep -qE '^frontend/package(-lock)?\.json$'; then
+    echo "==> package.json mudou, rodando npm install..."
+    npm install
+  fi
+
+  echo "==> Rodando build do frontend..."
+  npm run build
+  cd "$REPO_ROOT"
+fi
+
+if echo "$FILES_CHANGED" | grep -qE '^backend/composer\.(json|lock)$'; then
+  echo "==> composer.json/lock mudou, rodando composer install..."
+  cd "$REPO_ROOT/backend"
+  composer install --no-dev --optimize-autoloader
+  cd "$REPO_ROOT"
+fi
+
+echo "==> post-merge hook concluído."

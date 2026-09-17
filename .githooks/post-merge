@@ -21,6 +21,13 @@ if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
   echo "==> Rodando build do frontend..."
   npm run build
   cd "$REPO_ROOT"
+
+  if [ -d "$REPO_ROOT/public" ]; then
+    echo "==> Publicando build em $REPO_ROOT/public (DocumentRoot do Apache)..."
+    rsync -a --delete "$REPO_ROOT/frontend/dist/" "$REPO_ROOT/public/"
+  else
+    echo "==> AVISO: pasta $REPO_ROOT/public não existe, build não foi publicado. Publique manualmente."
+  fi
 fi
 
 if echo "$FILES_CHANGED" | grep -qE '^backend/composer\.(json|lock)$'; then

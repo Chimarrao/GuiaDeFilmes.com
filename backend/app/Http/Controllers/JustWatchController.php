@@ -41,17 +41,17 @@ class JustWatchController extends Controller
         }
 
         // Montar comando
-        $command = "$python \"$scriptPath\" \"$query\"";
-        
+        $command = $python . ' ' . escapeshellarg($scriptPath) . ' ' . escapeshellarg($query);
+
         if ($imdbId) {
-            $command .= " \"$imdbId\"";
+            $command .= ' ' . escapeshellarg($imdbId);
         } else {
             // Parâmetro vazio para manter ordem
-            $command .= " \"\"";
+            $command .= " ''";
         }
 
         if ($year) {
-            $command .= " \"$year\"";
+            $command .= ' ' . escapeshellarg($year);
         }
 
         // No Windows, adicionar comando para UTF-8

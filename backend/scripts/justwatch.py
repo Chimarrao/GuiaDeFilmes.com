@@ -26,7 +26,11 @@ if not query:
 # print(f"DEBUG: query={query}, imdb_id={imdb_id_filter}, year={year_filter}", file=sys.stderr)
 
 # Busca no JustWatch Brasil em português
-results = search(query, country="BR", language="pt", count=5, best_only=True)
+try:
+    results = search(query, country="BR", language="pt", count=5, best_only=True)
+except Exception as e:
+    print(json.dumps({"error": f"Falha ao buscar no JustWatch: {e}"}))
+    sys.exit(1)
 
 # Prepara saída filtrando pelo imdb_id e/ou ano se informado
 output = []

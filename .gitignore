@@ -3,27 +3,37 @@
 /HTACCESS_ADICIONAR_NO_CODEBR.txt
 
 # Laravel Backend
-/backend/node_modules
-/backend/public/hot
-/backend/public/storage
-/backend/storage/*.key
-/backend/vendor
-/backend/.env
-/backend/.env.backup
-/backend/.env.production
-/backend/.phpunit.result.cache
-/backend/Homestead.json
-/backend/Homestead.yaml
-/backend/auth.json
-/backend/npm-debug.log
-/backend/yarn-error.log
-/backend/.DS_Store
-/backend/Thumbs.db
+/node_modules
+/public/hot
+/public/storage
+/public/trailers
+/storage/*.key
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/vendor
+/venv
+/.env
+/.env.backup
+/.env.backup-raiz
+/.env.production
+/.phpunit.result.cache
+/Homestead.json
+/Homestead.yaml
+/auth.json
+/npm-debug.log
+/yarn-error.log
+/.DS_Store
+/Thumbs.db
 
 # Laravel Database
-/backend/database/database.sqlite
-/backend/database/*.sqlite
-/backend/database/*.sqlite-journal
+/database/database.sqlite
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# Scripts e exports temporários (uso local, não fazem parte do app)
+/scripts_tmp/
+/movies_export_*.csv
+/filmes_faltantes_*.csv
 
 # Vue Frontend
 /frontend/node_modules

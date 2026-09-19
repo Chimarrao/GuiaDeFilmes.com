@@ -52,9 +52,9 @@ Sistema completo de catálogo de filmes com geração de conteúdo por IA, otimi
 
 ### 1. Backend (Laravel)
 
-```bash
-cd backend
+O Laravel fica na raiz do projeto (não em `backend/`).
 
+```bash
 # Instalar dependências
 composer install
 
@@ -108,8 +108,6 @@ O frontend estará rodando em: `http://localhost:5173/cineradar/`
 #### 1. Preparar arquivos
 
 ```bash
-cd backend
-
 # Instalar dependências de produção
 composer install --optimize-autoloader --no-dev
 
@@ -143,9 +141,9 @@ DB_DATABASE=/caminho/absoluto/para/database/database.sqlite
 ```apache
 <VirtualHost *:80>
     ServerName seudominio.com
-    DocumentRoot /var/www/cineradar/backend/public
+    DocumentRoot /var/www/cineradar/public
 
-    <Directory /var/www/cineradar/backend/public>
+    <Directory /var/www/cineradar/public>
         AllowOverride All
         Require all granted
     </Directory>
@@ -161,7 +159,7 @@ DB_DATABASE=/caminho/absoluto/para/database/database.sqlite
 server {
     listen 80;
     server_name seudominio.com;
-    root /var/www/cineradar/backend/public;
+    root /var/www/cineradar/public;
 
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
@@ -197,11 +195,7 @@ Adicionar ao crontab (`crontab -e`):
 
 ```cron
 # Executar schedule do Laravel a cada minuto
-* * * * * cd /var/www/cineradar/backend && php artisan schedule:run >> /dev/null 2>&1
-
-# OU executar comandos específicos manualmente:
-# Gerar conteúdo AI diariamente às 4h
-0 4 * * * cd /var/www/cineradar/backend && php artisan generate:movie-ai
+* * * * * cd /var/www/cineradar && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ### Frontend (Vue 3)
@@ -225,11 +219,8 @@ Isso gerará a pasta `dist/` com todos os arquivos otimizados.
 **Opção A: Hospedar no mesmo servidor do backend**
 
 ```bash
-# Copiar arquivos buildados para public do Laravel
-cp -r dist/* /var/www/cineradar/backend/public/cineradar/
-
-# OU criar um link simbólico
-ln -s /var/www/cineradar/frontend/dist /var/www/cineradar/backend/public/cineradar
+# Copiar arquivos buildados para o public/ do Laravel (raiz do projeto)
+cp -rf dist/. /var/www/cineradar/public/
 ```
 
 **Opção B: Hospedar em servidor estático separado (Vercel, Netlify, etc.)**
@@ -269,19 +260,19 @@ aws s3 sync dist/ s3://seu-bucket/cineradar/ --acl public-read
 #### 3. Estrutura de arquivos em produção
 
 ```
-/var/www/cineradar/
-├── backend/
-│   ├── app/
-│   ├── config/
-│   ├── database/
-│   │   └── database.sqlite
-│   ├── public/          ← DocumentRoot do servidor web
-│   │   ├── index.php
-│   │   └── cineradar/   ← Frontend (opcional)
-│   └── ...
-└── frontend/
-    ├── dist/            ← Arquivos buildados
-    └── ...
+/var/www/cineradar/         ← raiz do projeto = app Laravel
+├── app/
+├── config/
+├── database/
+│   └── database.sqlite
+├── public/                 ← DocumentRoot do servidor web
+│   ├── index.php
+│   └── (build do frontend copiado pra cá)
+├── vendor/
+├── artisan
+└── frontend/                ← só o código-fonte do Vue
+    ├── src/
+    └── dist/                 ← build gerado (copiado pra ../public)
 ```
 
 ---

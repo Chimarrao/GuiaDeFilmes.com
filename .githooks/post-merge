@@ -3,9 +3,10 @@
 # Garante que o build do frontend e as dependências do backend sejam
 # refeitos quando o código-fonte correspondente mudar.
 #
-# Estrutura do projeto (padrão): backend/ é o app Laravel completo, com seu
-# próprio vendor/ e .env. O Apache aponta o DocumentRoot pra backend/public,
-# onde também fica publicado o build estático do frontend.
+# Estrutura do projeto (padrão): o app Laravel fica na RAIZ do repositório
+# (composer.json, artisan, app/, database/, vendor/, .env aqui mesmo). O
+# Apache aponta o DocumentRoot pra public/, onde também fica publicado o
+# build estático do frontend. frontend/ é só o código-fonte do Vue.
 set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -26,26 +27,24 @@ if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
   npm run build
   cd "$REPO_ROOT"
 
-  if [ -d "$REPO_ROOT/backend/public" ]; then
-    echo "==> Publicando build em backend/public (DocumentRoot do Apache)..."
+  if [ -d "$REPO_ROOT/public" ]; then
+    echo "==> Publicando build em public/ (DocumentRoot do Apache)..."
     # cp em vez de rsync (nem sempre instalado) — não usa --delete de propósito,
     # pra não arriscar apagar o index.php do Laravel ou o .htaccess.
-    cp -rf "$REPO_ROOT/frontend/dist/." "$REPO_ROOT/backend/public/"
+    cp -rf "$REPO_ROOT/frontend/dist/." "$REPO_ROOT/public/"
   else
-    echo "==> AVISO: pasta backend/public não existe, build não foi publicado. Publique manualmente."
+    echo "==> AVISO: pasta public/ não existe, build não foi publicado. Publique manualmente."
   fi
 fi
 
-if echo "$FILES_CHANGED" | grep -qE '^backend/composer\.(json|lock)$'; then
+if echo "$FILES_CHANGED" | grep -qE '^composer\.(json|lock)$'; then
   echo "==> composer.json/lock mudou, rodando composer install..."
-  cd "$REPO_ROOT/backend"
   composer install --no-dev --optimize-autoloader
-  cd "$REPO_ROOT"
 fi
 
-if echo "$FILES_CHANGED" | grep -qE '^backend/database/migrations/'; then
+if echo "$FILES_CHANGED" | grep -qE '^database/migrations/'; then
   echo "==> AVISO: migration nova detectada. Rode manualmente:"
-  echo "    cd backend && php artisan migrate --force"
+  echo "    php artisan migrate --force"
 fi
 
 echo "==> post-merge hook concluído."

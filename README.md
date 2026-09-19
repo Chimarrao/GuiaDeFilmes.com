@@ -76,9 +76,6 @@ touch database/database.sqlite  # No Windows: type nul > database\database.sqlit
 # Executar migrations
 php artisan migrate
 
-# Buscar filmes iniciais (exemplo: 20 filmes)
-php artisan fetch:movies --count=20
-
 # Gerar conteúdo AI para os filmes
 php artisan generate:movie-ai
 
@@ -203,9 +200,6 @@ Adicionar ao crontab (`crontab -e`):
 * * * * * cd /var/www/cineradar/backend && php artisan schedule:run >> /dev/null 2>&1
 
 # OU executar comandos específicos manualmente:
-# Buscar novos filmes diariamente às 3h
-0 3 * * * cd /var/www/cineradar/backend && php artisan fetch:movies --count=20
-
 # Gerar conteúdo AI diariamente às 4h
 0 4 * * * cd /var/www/cineradar/backend && php artisan generate:movie-ai
 ```
@@ -297,9 +291,6 @@ aws s3 sync dist/ s3://seu-bucket/cineradar/ --acl public-read
 ### Backend - Comandos Principais
 
 ```bash
-# === Buscar Filmes ===
-php artisan fetch:movies --count=10
-
 # === Gerar Conteúdo AI ===
 php artisan generate:movie-ai                    # Todos os filmes sem AI
 php artisan generate:movie-ai --movie_id=1       # Filme específico

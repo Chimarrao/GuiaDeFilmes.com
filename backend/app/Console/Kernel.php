@@ -26,7 +26,6 @@ class Kernel extends ConsoleKernel
      * Register the commands for the application.
      */
     protected $commands = [
-        \App\Console\Commands\FetchMoviesTMDB::class,
         \App\Console\Commands\JustwatchBackfill::class,
         \App\Console\Commands\CacheMovies::class,
         \App\Console\Commands\GenerateSitemap::class,

@@ -39,4 +39,17 @@ if echo "$FILES_CHANGED" | grep -qE '^backend/composer\.(json|lock)$'; then
   cd "$REPO_ROOT"
 fi
 
+# IMPORTANTE: o app Laravel que roda de verdade é o da RAIZ do projeto
+# (tem vendor/, .env, artisan instalados aqui), não o de dentro de backend/.
+# backend/ é só onde o código-fonte fica versionado no Git. Por isso,
+# sempre que o código do backend mudar, precisa copiar pra raiz também.
+if echo "$FILES_CHANGED" | grep -qE '^backend/(app|database/migrations|routes|scripts)/'; then
+  echo "==> Código do backend mudou, sincronizando pra raiz (onde o app roda de verdade)..."
+  cp -rf "$REPO_ROOT/backend/app/." "$REPO_ROOT/app/"
+  cp -rf "$REPO_ROOT/backend/database/migrations/." "$REPO_ROOT/database/migrations/"
+  cp -rf "$REPO_ROOT/backend/routes/." "$REPO_ROOT/routes/"
+  cp -rf "$REPO_ROOT/backend/scripts/." "$REPO_ROOT/scripts/"
+  echo "==> Sincronizado. Se teve migration nova, rode: php artisan migrate --force"
+fi
+
 echo "==> post-merge hook concluído."

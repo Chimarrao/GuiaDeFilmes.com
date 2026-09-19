@@ -12,9 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Adiciona índice FULLTEXT para busca rápida
-        // Nota: genres é JSON, então não pode ser indexado diretamente
-        DB::statement('ALTER TABLE movies ADD FULLTEXT fulltext_search (title, synopsis, tagline)');
+        // FULLTEXT só existe no MySQL; SQLite (usado em dev local) não suporta.
+        if (DB::getDriverName() === 'mysql') {
+            // Adiciona índice FULLTEXT para busca rápida
+            // Nota: genres é JSON, então não pode ser indexado diretamente
+            DB::statement('ALTER TABLE movies ADD FULLTEXT fulltext_search (title, synopsis, tagline)');
+        }
     }
 
     /**
@@ -22,7 +25,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remove índice FULLTEXT
-        DB::statement('ALTER TABLE movies DROP INDEX fulltext_search');
+        if (DB::getDriverName() === 'mysql') {
+            // Remove índice FULLTEXT
+            DB::statement('ALTER TABLE movies DROP INDEX fulltext_search');
+        }
     }
 };

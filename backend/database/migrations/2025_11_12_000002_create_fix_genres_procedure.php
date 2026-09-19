@@ -10,6 +10,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Stored procedures só existem no MySQL; SQLite (usado em dev local) não suporta.
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Remove a procedure se já existir
         DB::unprepared('DROP PROCEDURE IF EXISTS fix_genres');
 
@@ -36,6 +41,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::unprepared('DROP PROCEDURE IF EXISTS fix_genres');
+        if (DB::getDriverName() === 'mysql') {
+            DB::unprepared('DROP PROCEDURE IF EXISTS fix_genres');
+        }
     }
 };

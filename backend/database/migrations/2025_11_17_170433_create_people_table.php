@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -35,8 +36,10 @@ return new class extends Migration
             $table->index('popularity');
             $table->index('known_for_department');
 
-            // Fulltext index
-            $table->fullText(['name', 'biography']);
+            // Fulltext index (só suportado no MySQL; SQLite em dev local não suporta)
+            if (DB::getDriverName() === 'mysql') {
+                $table->fullText(['name', 'biography']);
+            }
         });
     }
 

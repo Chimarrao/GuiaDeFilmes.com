@@ -19,9 +19,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Blueprint não suporta índices funcionais nativamente
-        // Usar DB::statement() para SQL raw
-        DB::statement('ALTER TABLE movies ADD INDEX idx_release_year ((CAST(SUBSTR(release_date, 1, 4) AS UNSIGNED)))');
+        // Índice funcional (expressão) só existe no MySQL 5.7+; SQLite (usado em dev local) não suporta.
+        if (DB::getDriverName() === 'mysql') {
+            // Blueprint não suporta índices funcionais nativamente
+            // Usar DB::statement() para SQL raw
+            DB::statement('ALTER TABLE movies ADD INDEX idx_release_year ((CAST(SUBSTR(release_date, 1, 4) AS UNSIGNED)))');
+        }
     }
 
     /**
@@ -29,8 +32,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('movies', function (Blueprint $table) {
-            $table->dropIndex('idx_release_year');
-        });
+        if (DB::getDriverName() === 'mysql') {
+            Schema::table('movies', function (Blueprint $table) {
+                $table->dropIndex('idx_release_year');
+            });
+        }
     }
 };

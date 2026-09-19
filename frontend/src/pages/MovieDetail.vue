@@ -1091,8 +1091,8 @@ export default {
         })
       }
 
-      // Adicionar trailer do IMDB se disponível
-      if (movie.value?.imdb_trailer_url) {
+      // Adicionar trailer do IMDB apenas se não tiver trailer do YouTube (TMDB) já
+      if (movie.value?.imdb_trailer_url && (!groups['Trailers'] || groups['Trailers'].length === 0)) {
         if (!groups['Trailers']) {
           groups['Trailers'] = []
         }

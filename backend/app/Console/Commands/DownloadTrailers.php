@@ -21,7 +21,14 @@ class DownloadTrailers extends Command
      *
      * @var string
      */
-    protected $description = 'Baixa trailers do IMDB e faz upload para GitHub CDN';
+    protected $description = 'Baixa trailers do IMDB e salva no disco local do servidor (public/trailers)';
+
+    /**
+     * Espaço mínimo livre em disco a manter, em bytes (segurança contra lotar o disco).
+     *
+     * @var int
+     */
+    private const MIN_FREE_DISK_BYTES = 20 * 1024 * 1024 * 1024; // 20GB
 
     /**
      * Contador total de filmes processados
@@ -55,7 +62,7 @@ class DownloadTrailers extends Command
      * Executa o comando de download de trailers
      *
      * Processa filmes do banco de dados ou IDs específicos fornecidos via parâmetro,
-     * baixa trailers, comprime se necessário e faz upload para GitHub.
+     * baixa trailers, comprime se necessário e salva no disco local do servidor.
      *
      * @return int Código de saída do comando
      */
@@ -66,11 +73,6 @@ class DownloadTrailers extends Command
 
         $this->info('🎬 Iniciando download de trailers...');
         $this->newLine();
-
-        // Validar configurações
-        if (!$this->validateConfig()) {
-            return Command::FAILURE;
-        }
 
         // Buscar filmes elegíveis
         $movies = $this->getEligibleMovies();
@@ -98,6 +100,13 @@ class DownloadTrailers extends Command
 
         // Processar cada filme
         foreach ($movies as $movie) {
+            if (!$this->hasEnoughDiskSpace()) {
+                $this->newLine();
+                $this->error('🛑 Espaço em disco abaixo do mínimo de segurança (' . $this->formatBytes(self::MIN_FREE_DISK_BYTES) . ' livres). Parando.');
+                Log::warning('trailers:download interrompido por falta de espaço em disco.');
+                break;
+            }
+
             $this->totalProcessed++;
 
             $bar->setMessage("Processando: {$movie->title}");
@@ -121,39 +130,15 @@ class DownloadTrailers extends Command
     }
 
     /**
-     * Valida as configurações necessárias para o comando
+     * Verifica se ainda há espaço em disco suficiente pra continuar baixando trailers.
      *
-     * Verifica se todas as variáveis de ambiente necessárias estão configuradas
-     * no arquivo .env para o funcionamento correto do comando.
-     *
-     * @return bool True se todas as configurações estão válidas, false caso contrário
+     * @return bool True se há espaço acima do mínimo de segurança
      */
-    private function validateConfig(): bool
+    private function hasEnoughDiskSpace(): bool
     {
-        $required = [
-            'GITHUB_USER' => env('GITHUB_USER'),
-            'GITHUB_REPO' => env('GITHUB_REPO'),
-            'GITHUB_TOKEN' => env('GITHUB_TOKEN'),
-            'GITHUB_VIDEO_FOLDER' => env('GITHUB_VIDEO_FOLDER'),
-        ];
+        $freeBytes = disk_free_space(public_path());
 
-        $missing = [];
-        foreach ($required as $key => $value) {
-            if (empty($value)) {
-                $missing[] = $key;
-            }
-        }
-
-        if (!empty($missing)) {
-            $this->error('❌ Configurações ausentes no .env:');
-            foreach ($missing as $key) {
-                $this->error("  • {$key}");
-            }
-            return false;
-        }
-
-        $this->info('✅ Configurações validadas');
-        return true;
+        return $freeBytes !== false && $freeBytes > self::MIN_FREE_DISK_BYTES;
     }
 
     /**
@@ -176,10 +161,12 @@ class DownloadTrailers extends Command
             return collect(); // Retornar vazio pois será tratado depois
         }
 
-        // Buscar filmes reais sem trailer
+        // Buscar filmes sem trailer nenhum: sem trailer do YouTube (trailer_url) E sem trailer
+        // baixado (imdb_trailer_url). Se já tem YouTube, não faz sentido baixar de novo.
         $query = Movie::whereNotNull('external_ids')
+            ->whereNull('imdb_trailer_url')
             ->where(function ($query) {
-                $query->whereNull('imdb_trailer_url');
+                $query->whereNull('trailer_url')->orWhere('trailer_url', '');
             })
             ->orderBy('popularity', 'desc');
 
@@ -209,7 +196,7 @@ class DownloadTrailers extends Command
      * Processa um filme individual
      *
      * Executa todo o fluxo de processamento para um filme: download do trailer,
-     * compressão se necessário, upload para GitHub e atualização do banco de dados.
+     * compressão se necessário, salvamento no disco local e atualização do banco de dados.
      *
      * @param \App\Models\Movie $movie Instância do modelo Movie a ser processado
      * @return void
@@ -226,7 +213,7 @@ class DownloadTrailers extends Command
 
         $this->info("  🎬 Processando IMDB ID: {$imdbId} - {$movie->title}");
 
-        // 1. Baixar vídeo do IMDB
+        // 1. Baixar vídeo do IMDB (fica em arquivo temporário)
         $videoData = $this->downloadVideo($imdbId);
 
         if (!$videoData) {
@@ -239,20 +226,20 @@ class DownloadTrailers extends Command
 
         $this->info("  📊 Vídeo baixado: " . $this->formatBytes($videoData['size']) . " ({$videoData['extension']})");
 
-        // 2. Upload para GitHub
-        $cdnUrl = $this->uploadToGitHub($videoData, $imdbId, $movie->title);
+        // 2. Salvar no disco local (public/trailers), servido direto pelo Apache
+        $localUrl = $this->saveToLocalDisk($videoData['tempFile'], $videoData['extension'], $imdbId, $movie->title);
 
-        if (!$cdnUrl) {
+        if (!$localUrl) {
             $this->totalFailed++;
-            $this->error("  ❌ Falha no upload para GitHub");
+            $this->error("  ❌ Falha ao salvar trailer no disco local");
             return;
         }
 
-        $this->info("  ✅ Upload realizado: {$cdnUrl}");
+        $this->info("  ✅ Salvo em: {$localUrl}");
 
         // 3. Salvar URL no banco (apenas se for um filme real do banco)
         if (isset($movie->id) && $movie->id) {
-            $movie->imdb_trailer_url = $cdnUrl;
+            $movie->imdb_trailer_url = $localUrl;
             $movie->save();
             $this->info("  💾 URL salva no banco");
         } else {
@@ -260,7 +247,7 @@ class DownloadTrailers extends Command
         }
 
         $this->totalSuccess++;
-        Log::info("Trailer processado com sucesso para {$movie->title}: {$cdnUrl}");
+        Log::info("Trailer processado com sucesso para {$movie->title}: {$localUrl}");
     }
 
     /**
@@ -268,14 +255,16 @@ class DownloadTrailers extends Command
      *
      * Faz o download do trailer usando a API do IMDB, verifica o tamanho do arquivo,
      * comprime se necessário (para arquivos maiores que 20MB) e retorna os dados
-     * preparados para upload.
+     * (incluindo o caminho do arquivo temporário, ainda não apagado) prontos pra
+     * serem movidos pro destino final.
      *
      * @param string $imdbId ID do filme no IMDB (formato ttXXXXXXX)
-     * @return array|null Dados do vídeo ou null se falhar
+     * @return array|null Dados do vídeo (com 'tempFile') ou null se falhar
      */
     private function downloadVideo(string $imdbId): ?array
     {
         $tempFile = null;
+        $success = false;
 
         try {
             $url = "https://imdb.iamidiotareyoutoo.com/media/{$imdbId}";
@@ -322,12 +311,10 @@ class DownloadTrailers extends Command
             $contentType = $response->header('Content-Type') ?? 'video/mp4';
             $extension = $this->getExtensionFromContentType($contentType);
 
-            // Ler arquivo e converter para base64 (otimizado para memória)
-            $fileData = $this->readFileAsBase64($tempFile);
-            $base64Data = $fileData;
+            $success = true;
 
             return [
-                'data' => $base64Data,
+                'tempFile' => $tempFile,
                 'extension' => $extension,
                 'contentType' => $contentType,
                 'size' => $fileSize,
@@ -337,61 +324,51 @@ class DownloadTrailers extends Command
             Log::error("Erro ao baixar trailer para IMDB ID {$imdbId}: {$e->getMessage()}");
             return null;
         } finally {
-            // Sempre apagar arquivo temporário
-            if ($tempFile && file_exists($tempFile)) {
+            // Só apaga aqui se não deu certo — em caso de sucesso, quem apaga é
+            // saveToLocalDisk() depois de copiar o arquivo pro destino final.
+            if (!$success && $tempFile && file_exists($tempFile)) {
                 unlink($tempFile);
             }
         }
     }
 
     /**
-     * Faz upload do vídeo para o GitHub
+     * Salva o vídeo baixado em public/trailers, servido como arquivo estático pelo Apache.
      *
-     * Envia o vídeo comprimido para o repositório GitHub configurado e retorna
-     * a URL da CDN para acesso público ao arquivo.
-     *
-     * @param array $videoData Dados do vídeo (conteúdo base64, extensão, etc.)
+     * @param string $tempFilePath Caminho do arquivo temporário já baixado
+     * @param string $extension Extensão do arquivo (mp4, webm, etc.)
      * @param string $imdbId ID do filme no IMDB
      * @param string $movieTitle Título do filme para nome do arquivo
-     * @return string|null URL da CDN ou null se falhar
+     * @return string|null URL pública do trailer ou null se falhar
      */
-    private function uploadToGitHub(array $videoData, string $imdbId, string $movieTitle): ?string
+    private function saveToLocalDisk(string $tempFilePath, string $extension, string $imdbId, string $movieTitle): ?string
     {
         try {
-            $githubUser = env('GITHUB_USER');
-            $repoName = env('GITHUB_REPO');
-            $token = env('GITHUB_TOKEN');
-            $folder = env('GITHUB_VIDEO_FOLDER');
-
-            // Criar nome de arquivo limpo
             $cleanTitle = $this->sanitizeFileName($movieTitle);
-            $fileName = "{$imdbId}-{$cleanTitle}.{$videoData['extension']}";
+            $fileName = "{$imdbId}-{$cleanTitle}.{$extension}";
 
-            $uploadUrl = "https://api.github.com/repos/{$githubUser}/{$repoName}/contents/{$folder}/{$fileName}";
-
-            // Upload para GitHub
-            $response = Http::withoutVerifying()->withHeaders([
-                'Authorization' => "Bearer {$token}",
-                'Content-Type' => 'application/json',
-                'User-Agent' => 'Laravel-CineRadar',
-            ])->put($uploadUrl, [
-                'message' => "Upload trailer: {$movieTitle}",
-                'content' => $videoData['data'],
-            ]);
-
-            if (!$response->successful()) {
-                Log::error("Falha no upload para GitHub ({$imdbId}): HTTP {$response->status()} - {$response->body()}");
+            $destinationDir = public_path('trailers');
+            if (!is_dir($destinationDir) && !mkdir($destinationDir, 0755, true) && !is_dir($destinationDir)) {
+                Log::error("Não foi possível criar o diretório {$destinationDir}");
                 return null;
             }
 
-            // Construir URL da CDN
-            $cdnUrl = "https://cdn.jsdelivr.net/gh/{$githubUser}/{$repoName}/{$folder}/{$fileName}";
+            $destinationPath = $destinationDir . DIRECTORY_SEPARATOR . $fileName;
 
-            return $cdnUrl;
+            if (!copy($tempFilePath, $destinationPath)) {
+                Log::error("Falha ao copiar trailer para {$destinationPath} ({$imdbId})");
+                return null;
+            }
+
+            return rtrim(config('app.url'), '/') . '/trailers/' . $fileName;
 
         } catch (\Exception $e) {
-            Log::error("Erro ao fazer upload para GitHub ({$imdbId}): {$e->getMessage()}");
+            Log::error("Erro ao salvar trailer no disco local ({$imdbId}): {$e->getMessage()}");
             return null;
+        } finally {
+            if (file_exists($tempFilePath)) {
+                unlink($tempFilePath);
+            }
         }
     }
 
@@ -548,20 +525,6 @@ class DownloadTrailers extends Command
             Log::error("Erro ao executar compressão: {$e->getMessage()}");
             return false;
         }
-    }
-
-    /**
-     * Lê arquivo e converte para base64
-     *
-     * Lê o conteúdo completo do arquivo e o codifica em base64
-     * para envio via API do GitHub.
-     *
-     * @param string $filePath Caminho para o arquivo a ser lido
-     * @return string Conteúdo do arquivo em base64
-     */
-    private function readFileAsBase64(string $filePath): string
-    {
-        return base64_encode(file_get_contents($filePath));
     }
 
     /**

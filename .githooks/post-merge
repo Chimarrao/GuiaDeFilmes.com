@@ -1,7 +1,11 @@
 #!/bin/bash
 # Roda automaticamente depois de "git pull" / "git merge".
-# Garante que o build do frontend (e o composer do backend, se preciso)
-# sejam refeitos quando o código-fonte correspondente mudar.
+# Garante que o build do frontend e as dependências do backend sejam
+# refeitos quando o código-fonte correspondente mudar.
+#
+# Estrutura do projeto (padrão): backend/ é o app Laravel completo, com seu
+# próprio vendor/ e .env. O Apache aponta o DocumentRoot pra backend/public,
+# onde também fica publicado o build estático do frontend.
 set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -22,13 +26,13 @@ if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
   npm run build
   cd "$REPO_ROOT"
 
-  if [ -d "$REPO_ROOT/public" ]; then
-    echo "==> Publicando build em $REPO_ROOT/public (DocumentRoot do Apache)..."
+  if [ -d "$REPO_ROOT/backend/public" ]; then
+    echo "==> Publicando build em backend/public (DocumentRoot do Apache)..."
     # cp em vez de rsync (nem sempre instalado) — não usa --delete de propósito,
-    # pra não arriscar apagar .htaccess ou outros arquivos que não vêm do dist/.
-    cp -rf "$REPO_ROOT/frontend/dist/." "$REPO_ROOT/public/"
+    # pra não arriscar apagar o index.php do Laravel ou o .htaccess.
+    cp -rf "$REPO_ROOT/frontend/dist/." "$REPO_ROOT/backend/public/"
   else
-    echo "==> AVISO: pasta $REPO_ROOT/public não existe, build não foi publicado. Publique manualmente."
+    echo "==> AVISO: pasta backend/public não existe, build não foi publicado. Publique manualmente."
   fi
 fi
 
@@ -39,17 +43,9 @@ if echo "$FILES_CHANGED" | grep -qE '^backend/composer\.(json|lock)$'; then
   cd "$REPO_ROOT"
 fi
 
-# IMPORTANTE: o app Laravel que roda de verdade é o da RAIZ do projeto
-# (tem vendor/, .env, artisan instalados aqui), não o de dentro de backend/.
-# backend/ é só onde o código-fonte fica versionado no Git. Por isso,
-# sempre que o código do backend mudar, precisa copiar pra raiz também.
-if echo "$FILES_CHANGED" | grep -qE '^backend/(app|database/migrations|routes|scripts)/'; then
-  echo "==> Código do backend mudou, sincronizando pra raiz (onde o app roda de verdade)..."
-  cp -rf "$REPO_ROOT/backend/app/." "$REPO_ROOT/app/"
-  cp -rf "$REPO_ROOT/backend/database/migrations/." "$REPO_ROOT/database/migrations/"
-  cp -rf "$REPO_ROOT/backend/routes/." "$REPO_ROOT/routes/"
-  cp -rf "$REPO_ROOT/backend/scripts/." "$REPO_ROOT/scripts/"
-  echo "==> Sincronizado. Se teve migration nova, rode: php artisan migrate --force"
+if echo "$FILES_CHANGED" | grep -qE '^backend/database/migrations/'; then
+  echo "==> AVISO: migration nova detectada. Rode manualmente:"
+  echo "    cd backend && php artisan migrate --force"
 fi
 
 echo "==> post-merge hook concluído."

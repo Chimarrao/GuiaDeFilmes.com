@@ -20,6 +20,9 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('justwatch:backfill --limit=1000')->dailyAt('01:00');
         $schedule->command('trailers:download --limit=50')->dailyAt('02:00');
+
+        // Atualiza filmes já existentes: 1000 mais relevantes dos últimos anos + 1000 antigos aleatórios
+        $schedule->command('movies:refresh-existing --recent=1000 --old=1000')->dailyAt('03:00');
     }
 
     /**
@@ -30,5 +33,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\CacheMovies::class,
         \App\Console\Commands\GenerateSitemap::class,
         \App\Console\Commands\DownloadTrailers::class,
+        \App\Console\Commands\RefreshExistingMovies::class,
     ];
 }

@@ -42,6 +42,16 @@ if echo "$FILES_CHANGED" | grep -qE '^composer\.(json|lock)$'; then
   composer install --no-dev --optimize-autoloader
 fi
 
+if [ ! -x "$REPO_ROOT/venv/bin/python3" ]; then
+  echo "==> venv Python não encontrado (scripts/justwatch.py, compress_video.py precisam dele), criando..."
+  python3 -m venv "$REPO_ROOT/venv"
+  "$REPO_ROOT/venv/bin/pip" install --upgrade pip
+  "$REPO_ROOT/venv/bin/pip" install -r "$REPO_ROOT/scripts/requirements.txt"
+elif ! "$REPO_ROOT/venv/bin/python3" -c "import simplejustwatchapi" 2>/dev/null; then
+  echo "==> Dependências do venv Python faltando, reinstalando..."
+  "$REPO_ROOT/venv/bin/pip" install -r "$REPO_ROOT/scripts/requirements.txt"
+fi
+
 if echo "$FILES_CHANGED" | grep -qE '^database/migrations/'; then
   echo "==> Migration nova detectada, rodando php artisan migrate --force..."
   # Limpa cache de pacotes/config antes de migrar: evita erro de classe de pacote

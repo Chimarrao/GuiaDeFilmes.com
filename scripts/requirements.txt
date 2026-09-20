@@ -1,1 +1,1 @@
-simplejustwatchapi
+simple-justwatch-python-api

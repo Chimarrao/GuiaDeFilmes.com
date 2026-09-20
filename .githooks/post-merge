@@ -43,8 +43,8 @@ if echo "$FILES_CHANGED" | grep -qE '^composer\.(json|lock)$'; then
 fi
 
 if echo "$FILES_CHANGED" | grep -qE '^database/migrations/'; then
-  echo "==> AVISO: migration nova detectada. Rode manualmente:"
-  echo "    php artisan migrate --force"
+  echo "==> Migration nova detectada, rodando php artisan migrate --force..."
+  php artisan migrate --force
 fi
 
 echo "==> post-merge hook concluído."

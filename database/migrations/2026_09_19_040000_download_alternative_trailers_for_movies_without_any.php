@@ -12,13 +12,13 @@ return new class extends Migration
     private const MIN_FREE_DISK_BYTES = 20 * 1024 * 1024 * 1024; // 20GB
 
     /**
-     * Baixa, um a um, os trailers ainda hospedados no GitHub e salva em
-     * public/trailers (disco local do servidor). Pode demorar bastante
-     * (uma requisição HTTP por filme, com um pequeno delay entre elas) —
-     * rode em background no servidor (ex: nohup php artisan migrate &).
+     * Só roda em produção: faz download real de vídeo (fonte alternativa ao YouTube)
+     * pra cada filme do banco (incluindo os recém-importados via CSV/n8n) que ainda
+     * não tem nenhum trailer — nem YouTube (trailer_url) nem alternativo
+     * (imdb_trailer_url). Sem limite de tamanho de arquivo (baixa o que vier).
      *
-     * É seguro rodar de novo se parar no meio (via migrate:rollback + migrate):
-     * só processa o que ainda aponta pro GitHub.
+     * Seguro rodar de novo se parar no meio: só processa quem continua sem
+     * nenhum dos dois campos preenchidos.
      */
     public function up(): void
     {
@@ -27,13 +27,16 @@ return new class extends Migration
         }
 
         $movies = DB::table('movies')
-            ->whereNotNull('imdb_trailer_url')
-            ->where('imdb_trailer_url', 'like', '%github%')
-            ->select('id', 'imdb_trailer_url', 'title')
+            ->whereNotNull('external_ids')
+            ->whereNull('imdb_trailer_url')
+            ->where(function ($query) {
+                $query->whereNull('trailer_url')->orWhere('trailer_url', '');
+            })
+            ->select('id', 'external_ids', 'title')
             ->get();
 
         $total = $movies->count();
-        echo "  Total de trailers a migrar do GitHub para o disco local: {$total}\n";
+        echo "  Total de filmes sem nenhum trailer (YouTube ou alternativo): {$total}\n";
 
         $destinationDir = public_path('trailers');
         if (!is_dir($destinationDir)) {
@@ -41,7 +44,8 @@ return new class extends Migration
         }
 
         $done = 0;
-        $failed = 0;
+        $notFound = 0;
+        $skipped = 0;
         $maxAttempts = 5;
 
         foreach ($movies as $movie) {
@@ -50,7 +54,18 @@ return new class extends Migration
                 break;
             }
 
-            $fileName = basename(parse_url($movie->imdb_trailer_url, PHP_URL_PATH));
+            $externalIds = json_decode($movie->external_ids, true);
+            $imdbId = $externalIds['imdb_id'] ?? null;
+
+            if (!$imdbId) {
+                $skipped++;
+                continue;
+            }
+
+            $url = "https://imdb.iamidiotareyoutoo.com/media/{$imdbId}";
+            $cleanTitle = preg_replace('/[^a-zA-Z0-9.-]/', '', preg_replace('/\s+/', '-', $movie->title));
+            $cleanTitle = substr($cleanTitle, 0, 50);
+            $fileName = "{$imdbId}-{$cleanTitle}.mp4";
             $destinationPath = $destinationDir . DIRECTORY_SEPARATOR . $fileName;
 
             $success = false;
@@ -58,9 +73,9 @@ return new class extends Migration
 
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                 try {
-                    $response = Http::withoutVerifying()->timeout(120)->sink($destinationPath)->get($movie->imdb_trailer_url);
+                    $response = Http::withoutVerifying()->timeout(120)->sink($destinationPath)->get($url);
 
-                    if ($response->successful()) {
+                    if ($response->successful() && file_exists($destinationPath) && filesize($destinationPath) > 0) {
                         $success = true;
                         break;
                     }
@@ -82,27 +97,25 @@ return new class extends Migration
                 $done++;
                 echo "  [OK] {$movie->title}\n";
             } else {
-                // Esgotou as tentativas: zera o link em vez de deixar apontando pro GitHub morto
-                DB::table('movies')->where('id', $movie->id)->update(['imdb_trailer_url' => null]);
+                // Sem trailer alternativo disponível nessa fonte: campo já estava
+                // NULL, não há nada pra zerar — só loga e segue.
                 if (file_exists($destinationPath)) {
                     unlink($destinationPath);
                 }
-                $failed++;
-                echo "  [FALHOU após {$maxAttempts} tentativas, link zerado] {$movie->title}: {$lastError}\n";
+                $notFound++;
+                echo "  [SEM TRAILER ALTERNATIVO] {$movie->title}: {$lastError}\n";
             }
 
             sleep(1);
         }
 
-        echo "  Concluído: {$done} migrados, {$failed} zerados por falha.\n";
+        echo "  Concluído: {$done} baixados, {$notFound} sem trailer alternativo disponível, {$skipped} sem IMDB ID.\n";
     }
 
     /**
-     * Não reversível: os arquivos baixados não são apagados nem as URLs do
-     * GitHub restauradas (o nome do arquivo não garante reconstrução da URL original).
+     * Não reversível: os arquivos baixados não são apagados.
      */
     public function down(): void
     {
-        // Intencionalmente vazio.
     }
 };

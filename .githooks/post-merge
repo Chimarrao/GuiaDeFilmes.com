@@ -44,6 +44,10 @@ fi
 
 if echo "$FILES_CHANGED" | grep -qE '^database/migrations/'; then
   echo "==> Migration nova detectada, rodando php artisan migrate --force..."
+  # Limpa cache de pacotes/config antes de migrar: evita erro de classe de pacote
+  # de dev (ex: nunomaduro/collision) que ficou em cache de um composer install
+  # anterior sem --no-dev, mas não está instalado agora.
+  rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php
   php artisan migrate --force
 fi
 

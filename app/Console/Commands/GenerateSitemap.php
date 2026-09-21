@@ -126,7 +126,7 @@ class GenerateSitemap extends Command
         Movie::where('adult', 0)
             ->whereNotNull('slug')
             ->orderBy('id')
-            ->select(['slug', 'updated_at'])
+            ->select(['id', 'slug', 'updated_at'])
             ->chunkById(5000, function ($movies) use (&$handle, &$urlsInCurrentFile, $openNewFile) {
                 foreach ($movies as $movie) {
                     if ($urlsInCurrentFile >= self::MAX_URLS_PER_FILE) {

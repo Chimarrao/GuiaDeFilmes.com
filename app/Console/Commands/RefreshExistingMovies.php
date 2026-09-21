@@ -79,8 +79,11 @@ class RefreshExistingMovies extends Command
 
                 $data = $response->json();
 
+                $trailerUrl = $this->findYoutubeTrailerUrl($data['videos']['results'] ?? [], $movie->tmdb_id, $apiKey);
+
                 DB::table('movies')->where('id', $movie->id)->update([
                     'title' => $data['title'] ?? $movie->title,
+                    'trailer_url' => $trailerUrl,
                     'synopsis' => $data['overview'] ?? null,
                     'release_date' => $data['release_date'] ?? null,
                     'status' => $data['status'] ?? null,
@@ -129,5 +132,42 @@ class RefreshExistingMovies extends Command
         $this->info("\n== Concluído ==");
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Procura um trailer oficial do YouTube nos vídeos já obtidos (pt-BR).
+     * Se não achar, faz uma segunda chamada pedindo em en-US antes de desistir —
+     * a maioria dos trailers do TMDB só existe cadastrada em inglês.
+     *
+     * @param array $ptBrVideos Resultados de "videos" já vindos na resposta em pt-BR
+     */
+    private function findYoutubeTrailerUrl(array $ptBrVideos, int $tmdbId, string $apiKey): ?string
+    {
+        $key = $this->extractTrailerKey($ptBrVideos);
+
+        if (!$key) {
+            $response = Http::timeout(15)->retry(2, 500)->get("https://api.themoviedb.org/3/movie/{$tmdbId}/videos", [
+                'api_key' => $apiKey,
+                'language' => 'en-US',
+            ]);
+
+            if ($response->successful()) {
+                $key = $this->extractTrailerKey($response->json('results') ?? []);
+            }
+        }
+
+        return $key ? "https://www.youtube.com/watch?v={$key}" : null;
+    }
+
+    /**
+     * Extrai a key do primeiro trailer oficial do YouTube numa lista de vídeos do TMDB.
+     */
+    private function extractTrailerKey(array $videos): ?string
+    {
+        $trailers = collect($videos)->filter(fn ($v) => ($v['site'] ?? null) === 'YouTube' && ($v['type'] ?? null) === 'Trailer');
+
+        $official = $trailers->firstWhere('official', true);
+
+        return ($official ?? $trailers->first())['key'] ?? null;
     }
 }

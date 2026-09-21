@@ -7,6 +7,7 @@
 /public/hot
 /public/storage
 /public/trailers
+/public/sitemap*.xml
 /storage/*.key
 /storage/framework/sessions/*
 !/storage/framework/sessions/.gitignore

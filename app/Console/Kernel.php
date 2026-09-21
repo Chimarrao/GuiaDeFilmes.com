@@ -23,6 +23,8 @@ class Kernel extends ConsoleKernel
 
         // Atualiza filmes já existentes: 1000 mais relevantes dos últimos anos + 1000 antigos aleatórios
         $schedule->command('movies:refresh-existing --recent=1000 --old=1000')->dailyAt('03:00');
+
+        $schedule->command('sitemap:generate')->dailyAt('04:00');
     }
 
     /**

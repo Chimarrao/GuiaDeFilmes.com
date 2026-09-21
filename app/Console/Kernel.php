@@ -18,7 +18,10 @@ class Kernel extends ConsoleKernel
         // Cache com troca atômica (zero downtime)
         $schedule->command('cache:generate')->dailyAt('00:00');
 
+        // Filmes novos (nunca tentados)
         $schedule->command('justwatch:backfill --limit=1000')->dailyAt('01:00');
+        // Reprocessa filmes que ficaram com resultado vazio (plataforma pode ter mudado desde então)
+        $schedule->command('justwatch:backfill --empty --limit=1000')->dailyAt('01:30');
         $schedule->command('trailers:download --limit=50')->dailyAt('02:00');
 
         // Atualiza filmes já existentes: 1000 mais relevantes dos últimos anos + 1000 antigos aleatórios

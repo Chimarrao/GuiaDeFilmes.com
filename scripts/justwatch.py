@@ -53,13 +53,13 @@ for entry in results:
         "poster": entry.poster,
         "offers": [
             {
-                "platform": getattr(offer, 'name', None) or getattr(offer, 'package_short_name', None) or getattr(offer, 'technical_name', 'Unknown'),
+                "platform": getattr(offer.package, 'name', None) or getattr(offer.package, 'technical_name', 'Unknown'),
                 "type": getattr(offer, 'monetization_type', None),
                 "quality": getattr(offer, 'presentation_type', None),
                 "price": getattr(offer, 'price_string', None),
                 "currency": getattr(offer, 'price_currency', None),
                 "url": getattr(offer, 'url', None),
-                "icon": getattr(offer, 'icon', None)
+                "icon": getattr(offer.package, 'icon', None)
             }
             for offer in entry.offers
         ]

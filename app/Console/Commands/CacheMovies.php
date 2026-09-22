@@ -600,22 +600,22 @@ class CacheMovies extends Command
                     'East Germany' => [
                         'code' => 'GDR',
                         'name' => 'Alemanha Oriental',
-                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Flag_of_the_German_Democratic_Republic.svg/2560px-Flag_of_the_German_Democratic_Republic.svg.png'
+                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Flag_of_the_German_Democratic_Republic.svg/500px-Flag_of_the_German_Democratic_Republic.svg.png'
                     ],
                     'Soviet Union' => [
                         'code' => 'SU',
                         'name' => 'União Soviética',
-                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/2560px-Flag_of_the_Soviet_Union.svg.png'
+                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_the_Soviet_Union.svg/500px-Flag_of_the_Soviet_Union.svg.png'
                     ],
                     'Yugoslavia' => [
                         'code' => 'YU',
                         'name' => 'Iugoslávia',
-                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Flag_of_Yugoslavia_%281946-1992%29.svg/2560px-Flag_of_Yugoslavia_%281946-1992%29.svg.png'
+                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Flag_of_Yugoslavia_%281946-1992%29.svg/500px-Flag_of_Yugoslavia_%281946-1992%29.svg.png'
                     ],
                     'Serbia and Montenegro' => [
                         'code' => 'SAM',
                         'name' => 'Sérvia e Montenegro',
-                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg/2560px-Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg.png'
+                        'flag' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg/500px-Flag_of_Serbia_and_Montenegro_%281992%E2%80%932006%29.svg.png'
                     ],
                     'Netherlands Antilles' => [
                         'code' => 'AN',

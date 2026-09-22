@@ -39,5 +39,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\GenerateSitemap::class,
         \App\Console\Commands\DownloadTrailers::class,
         \App\Console\Commands\RefreshExistingMovies::class,
+        \App\Console\Commands\QueueMovieTrailers::class,
+        \App\Console\Commands\QueueMovieJustWatch::class,
+        \App\Console\Commands\QueueMovieTitleFix::class,
     ];
 }

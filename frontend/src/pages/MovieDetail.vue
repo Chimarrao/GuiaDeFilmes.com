@@ -45,12 +45,12 @@
               </div>
 
               <!-- Rating TMDB -->
-              <div class="rating-section mb-4" v-if="movie.tmdb_rating">
-                <RatingBadge :score="movie.tmdb_rating" class="mr-3" style="width: 60px; height: 60px;" />
+              <div class="rating-section mb-4">
+                <RatingBadge v-if="hasRating" :score="Number(movie.tmdb_rating)" class="mr-3" style="width: 60px; height: 60px;" />
                 <span class="has-text-white is-size-4">
-                  <strong class="rating-score">{{ movie.tmdb_rating }}</strong>/10
+                  <strong class="rating-score">{{ hasRating ? movie.tmdb_rating : '-' }}</strong>/10
                 </span>
-                <span class="has-text-white-ter ml-2">({{ formatNumber(movie.tmdb_vote_count) }} votos)</span>
+                <span class="has-text-white-ter ml-2" v-if="hasRating">({{ formatNumber(movie.tmdb_vote_count) }} votos)</span>
               </div>
 
               <div class="genres mb-4" v-if="movie.genres && movie.genres.length">
@@ -772,27 +772,32 @@ export default {
       return `/explorar/genero/${slug}`
     }
 
+    // Placeholder auto-contido (sem depender de serviço externo tipo via.placeholder.com,
+    // que já ficou fora do ar antes) - mesmo visual usado no MovieCard da listagem.
+    const NO_POSTER_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"%3E%3Crect width="500" height="750" fill="%231a1a1a"/%3E%3Cpath d="M250 275L200 325H225V425H275V325H300L250 275Z M350 450H150C136.2 450 125 461.2 125 475V500C125 513.8 136.2 525 150 525H350C363.8 525 375 513.8 375 500V475C375 461.2 363.8 450 350 450Z" fill="%23e50914"/%3E%3Ctext x="250" y="600" font-family="Arial, sans-serif" font-size="20" fill="%23666" text-anchor="middle"%3ESEM POSTER%3C/text%3E%3C/svg%3E'
+    const NO_BACKDROP_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"%3E%3Crect width="1920" height="1080" fill="%231a1a1a"/%3E%3Ctext x="960" y="540" font-family="Arial, sans-serif" font-size="48" fill="%23666" text-anchor="middle"%3EGUIA DE FILMES%3C/text%3E%3C/svg%3E'
+
     const getPosterUrl = () => {
       if (!movie.value) {
-        return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
+        return NO_POSTER_PLACEHOLDER
       }
 
       // Prioridade: poster_url → imdb_poster_url → placeholder
       if (movie.value.poster_url) {
         return movie.value.poster_url
       }
-      
+
       if (movie.value.imdb_poster_url) {
         return movie.value.imdb_poster_url
       }
-      
+
       // Imagem default para filmes sem poster
-      return 'https://via.placeholder.com/500x750/1a1a1a/e50914?text=SEM+POSTER'
+      return NO_POSTER_PLACEHOLDER
     }
 
     const getBackdropUrl = () => {
       if (!movie.value) {
-        return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)'
+        return `url(${NO_BACKDROP_PLACEHOLDER})`
       }
 
       if (movie.value.images && movie.value.images.backdrops && movie.value.images.backdrops.length > 0) {
@@ -804,7 +809,7 @@ export default {
       if (movie.value.poster_url) {
         return `url(${movie.value.poster_url})`
       }
-      return 'url(https://via.placeholder.com/1920x1080/1a1a1a/e50914?text=GUIA+DE+FILMES)'
+      return `url(${NO_BACKDROP_PLACEHOLDER})`
     }
 
     const getActorPhoto = (profilePath) => {
@@ -1375,6 +1380,10 @@ export default {
     }
 
     // Separa plataformas por tipo (JustWatch format)
+    const hasRating = computed(() => {
+      return Number(movie.value?.tmdb_vote_count) > 0
+    })
+
     const flatratePlatforms = computed(() => {
       const normalized = normalizeJustWatchData()
       return normalized.filter(p => p.type === 'FLATRATE')
@@ -1556,6 +1565,7 @@ export default {
       hasPhotos,
       groupedVideos,
       hasJustWatchData,
+      hasRating,
       flatratePlatforms,
       rentPlatforms,
       buyPlatforms,

@@ -18,8 +18,20 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # index.html é o build estático do SPA. Sem esta regra, "/" e
+    # "/index.html" batiam na condição "!-f" abaixo (o arquivo existe de
+    # verdade) e o Apache servia ele direto, pulando o Laravel inteiro —
+    # ou seja, pulando o SpaController que preenche title/canonical/conteúdo
+    # por rota (toda página ficava com o title genérico da home) e pulando
+    # o middleware de redirect www->canônico. Força sempre ir pro Laravel.
+    RewriteRule ^index\.html$ index.php [L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Idem: impede o Apache de resolver "/" direto pra index.html via
+# DirectoryIndex antes mesmo do mod_rewrite entrar em ação.
+DirectoryIndex disabled

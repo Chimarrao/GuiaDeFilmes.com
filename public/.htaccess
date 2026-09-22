@@ -31,7 +31,3 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
-
-# Idem: impede o Apache de resolver "/" direto pra index.html via
-# DirectoryIndex antes mesmo do mod_rewrite entrar em ação.
-DirectoryIndex disabled

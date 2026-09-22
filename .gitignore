@@ -8,6 +8,8 @@
 /public/storage
 /public/trailers
 /public/sitemap*.xml
+/public/index.html
+/public/assets
 /storage/*.key
 /storage/framework/sessions/*
 !/storage/framework/sessions/.gitignore

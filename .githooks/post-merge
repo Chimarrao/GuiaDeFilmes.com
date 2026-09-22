@@ -32,6 +32,12 @@ if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
     # cp em vez de rsync (nem sempre instalado) — não usa --delete de propósito,
     # pra não arriscar apagar o index.php do Laravel ou o .htaccess.
     cp -rf "$REPO_ROOT/frontend/dist/." "$REPO_ROOT/public/"
+
+    # O SpaController cacheia o HTML de cada rota (com asset hashes do build
+    # antigo embutidos) por até 6h — sem isso, quem pegasse cache continuaria
+    # recebendo o public/index.html anterior por até 6h após o deploy.
+    echo "==> Limpando cache de HTML do SpaController (asset hashes do build antigo)..."
+    php artisan cache:clear
   else
     echo "==> AVISO: pasta public/ não existe, build não foi publicado. Publique manualmente."
   fi

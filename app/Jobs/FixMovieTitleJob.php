@@ -44,10 +44,17 @@ class FixMovieTitleJob implements ShouldQueue
             return;
         }
 
-        $response = Http::timeout(15)->retry(2, 500)->get("https://api.themoviedb.org/3/movie/{$movie->tmdb_id}", [
-            'api_key' => $apiKey,
-            'language' => 'pt-BR',
-        ]);
+        try {
+            $response = Http::timeout(15)->retry(2, 500, throw: false)->get("https://api.themoviedb.org/3/movie/{$movie->tmdb_id}", [
+                'api_key' => $apiKey,
+                'language' => 'pt-BR',
+            ]);
+        } catch (\Throwable $e) {
+            // tmdb_id inválido/removido, timeout persistente etc. — pula esse
+            // filme sem derrubar o restante do lote (crítico em modo sync,
+            // onde não existe worker isolando falha de um job dos outros).
+            return;
+        }
 
         if (!$response->successful()) {
             return;

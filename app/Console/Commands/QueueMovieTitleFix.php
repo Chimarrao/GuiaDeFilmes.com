@@ -29,9 +29,21 @@ class QueueMovieTitleFix extends Command
             ->limit($limit)
             ->pluck('id');
 
+        $bar = $this->output->createProgressBar($ids->count());
         foreach ($ids as $id) {
-            FixMovieTitleJob::dispatch($id);
+            try {
+                FixMovieTitleJob::dispatch($id);
+            } catch (\Throwable $e) {
+                // Em QUEUE_CONNECTION=sync o job roda inline aqui mesmo —
+                // uma falha não tratada dentro dele não pode derrubar o
+                // resto do lote.
+                $this->newLine();
+                $this->warn("Falhou o filme id={$id}: {$e->getMessage()}");
+            }
+            $bar->advance();
         }
+        $bar->finish();
+        $this->newLine();
 
         $this->info("Enfileirados {$ids->count()} jobs de correção de título.");
 

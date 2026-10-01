@@ -727,10 +727,17 @@ export default {
                   '@type': 'Person',
                   name: director.name
                 })),
-                aggregateRating: m.tmdb_rating ? {
+                // bestRating/worstRating são obrigatórios pro Google aceitar
+                // o snippet (senão assume a escala padrão do schema.org,
+                // 1-5, e marca nota 0-10 como "fora do intervalo"). Usa
+                // hasRating (vote_count > 0) em vez de truthy direto do
+                // tmdb_rating: "0.0" como string é truthy em JS.
+                aggregateRating: hasRating.value ? {
                   '@type': 'AggregateRating',
                   ratingValue: m.tmdb_rating,
-                  ratingCount: m.tmdb_vote_count
+                  ratingCount: m.tmdb_vote_count,
+                  bestRating: 10,
+                  worstRating: 0
                 } : undefined,
                 duration: m.runtime ? `PT${m.runtime}M` : undefined
               })

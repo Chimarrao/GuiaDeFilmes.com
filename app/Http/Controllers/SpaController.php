@@ -190,10 +190,17 @@ class SpaController extends Controller
         ];
 
         if ($movie->tmdb_vote_count > 0) {
+            // bestRating/worstRating são obrigatórios pro Google aceitar o
+            // snippet: sem eles, a validação assume a escala padrão do
+            // schema.org (1-5) e marca qualquer nota 0-10 como "fora do
+            // intervalo" (confirmado via Search Console: "A classificação
+            // está fora do intervalo padrão ou especificado").
             $jsonLd['aggregateRating'] = [
                 '@type' => 'AggregateRating',
                 'ratingValue' => $movie->tmdb_rating,
                 'ratingCount' => $movie->tmdb_vote_count,
+                'bestRating' => 10,
+                'worstRating' => 0,
             ];
         }
 

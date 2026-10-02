@@ -1,0 +1,27 @@
+# Banco isolado só para rodar a suíte de testes (Pest) — nenhum volume
+# nomeado, então é totalmente descartável: pode subir, rodar os testes e
+# derrubar com "down -v" sem medo de perder nada importante.
+#
+# Uso:
+#   docker compose -f docker-compose.testing.yml up -d
+#   ./vendor/bin/pest          (config já aponta pro banco daqui, ver phpunit.xml)
+#   docker compose -f docker-compose.testing.yml down -v   (quando terminar)
+
+services:
+  test-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: guiadefilmes_test
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_ROOT_PASSWORD: testpass
+    command:
+      - --innodb-buffer-pool-size=96M
+      - --performance-schema=OFF
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptestpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

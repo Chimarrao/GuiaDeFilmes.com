@@ -48,13 +48,12 @@ class JustwatchBackfill extends Command
                   ->orderByRaw('CASE WHEN justwatch_watch_info IS NULL THEN 0 ELSE 1 END')
                   ->orderBy('id', 'asc');
         }
-        // Se flag --empty, pega apenas os com JSON vazio
+        // Se flag --empty, pega apenas os com JSON vazio. Comparar a coluna
+        // JSON com "= '[]'" nunca bate no MySQL (o valor binário armazenado
+        // não é igual à string literal) — precisa de JSON_LENGTH() = 0.
         elseif ($empty) {
-            $query->where(function($q) {
-                $q->where('justwatch_watch_info', '[]')
-                  ->orWhere('justwatch_watch_info', 'null')
-                  ->orWhere('justwatch_watch_info', '{}');
-            });
+            $query->whereNotNull('justwatch_watch_info')
+                ->whereRaw('JSON_LENGTH(justwatch_watch_info) = 0');
         }
         // Caso padrão: apenas NULL
         else {

@@ -1,0 +1,176 @@
+# Stack de produção. Tudo controlado pelo .env — sem flag extra na hora
+# de subir:
+#
+#   cp .env.example .env   # editar com os valores reais
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Por padrão (.env.example já vem assim) o banco também sobe dentro do
+# Docker (serviço "db" abaixo, com volume próprio) — zero pré-requisito
+# no host, zero dor de cabeça: build e já era.
+#
+# Se preferir usar um MySQL externo (já existente, fora do Docker) em vez
+# do banco containerizado, é só editar o .env, sem tocar neste arquivo:
+#   - Apague ou deixe "COMPOSE_PROFILES=" vazio (isso desliga o serviço "db")
+#   - Aponte DB_HOST para o host real (use "host.docker.internal" se o
+#     MySQL externo roda na mesma máquina, fora do Docker) e ajuste
+#     DB_PORT/DB_USERNAME/DB_PASSWORD/DB_DATABASE
+# O entrypoint dos containers espera o banco ficar disponível antes de
+# migrar, então funciona tanto com o "db" do Docker quanto com um externo.
+
+services:
+  # Único serviço com porta publicada. Serve os estáticos direto e
+  # encaminha .php pro "app" via FastCGI (porta 9000, só na rede interna).
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: webserver
+    ports:
+      - "8000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - public_data:/var/www/html/public
+    restart: unless-stopped
+    mem_limit: 32m
+    memswap_limit: 32m
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+      - public_data:/var/www/html/public
+    healthcheck:
+      # FPM só passa a escutar na porta 9000 depois que o entrypoint termina
+      # (inclusive as migrations) — evita o "webserver" subir e mandar
+      # tráfego antes da app estar realmente pronta (502 na largada).
+      test: ["CMD", "nc", "-z", "127.0.0.1", "9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    # Testado sob carga (ab -c10, ~250 req/s): pico real ~59MB. 200MB dá
+    # margem de ~3x pra picos de tráfego sem ficar apertado no total.
+    mem_limit: 200m
+    memswap_limit: 200m
+
+  # Consome as filas de jobs (php artisan queue:work). Escalável:
+  # "docker compose -f docker-compose.prod.yml up -d --scale queue-worker=3".
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    command: php artisan queue:work redis --sleep=3 --tries=3 --backoff=10
+    env_file:
+      - .env
+    environment:
+      SKIP_MIGRATE: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+      - public_data:/var/www/html/public
+    restart: unless-stopped
+    # Testado processando 200 jobs em fila: pico real ~29MB.
+    mem_limit: 100m
+    memswap_limit: 100m
+
+  # Substitui o cron do host: "php artisan schedule:work" fica rodando e
+  # dispara os comandos agendados no Kernel.php (cache:generate,
+  # justwatch:backfill, sitemap:generate etc.) sozinho, sem crontab.
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    command: php artisan schedule:work
+    env_file:
+      - .env
+    environment:
+      SKIP_MIGRATE: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+      - public_data:/var/www/html/public
+    restart: unless-stopped
+    # Testado rodando cache:generate com 20.000 filmes na base: pico real
+    # ~65MB (a maior parte é overhead fixo do bootstrap do Laravel/artisan,
+    # não escala muito com o volume de dados — ver estudo de estabilidade).
+    mem_limit: 150m
+    memswap_limit: 150m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 48mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 64m
+    memswap_limit: 64m
+
+  # Opcional (ligado por padrão via COMPOSE_PROFILES=db no .env.example).
+  # Só sobe se o profile "db" estiver ativo — ver comentário no topo do
+  # arquivo pra usar um MySQL externo em vez deste.
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    profiles:
+      - db
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    # Flags pra caber num orçamento pequeno de RAM (padrão do MySQL 8 usa
+    # bem mais que isso). Ajuste esses valores se notar lentidão real.
+    command:
+      - --innodb-buffer-pool-size=96M
+      - --key-buffer-size=8M
+      - --max-connections=50
+      - --performance-schema=OFF
+      - --table-open-cache=200
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Testado com 20.000 filmes + carga concorrente: pico real ~229MB
+    # (innodb-buffer-pool-size=96M acima já limita o footprint; o resto é
+    # overhead fixo do MySQL). 350MB dá margem confortável mesmo pro
+    # catálogo completo (~60.000 filmes).
+    mem_limit: 350m
+    memswap_limit: 350m
+
+volumes:
+  db_data:
+  redis_data:
+  storage_data:
+  public_data:

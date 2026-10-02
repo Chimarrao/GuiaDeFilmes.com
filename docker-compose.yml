@@ -1,0 +1,124 @@
+services:
+  # Serve os arquivos estáticos (build do frontend, imagens, trailers) e
+  # encaminha as requisições .php pro "app" via FastCGI. Único serviço com
+  # porta publicada — app/queue-worker/scheduler só respondem na rede
+  # interna do Docker (porta 9000, FPM).
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: webserver
+    ports:
+      - "8000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - public_data:/var/www/html/public
+    mem_limit: 32m
+    memswap_limit: 32m
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      REDIS_HOST: redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+      - public_data:/var/www/html/public
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    # Orçamento de RAM pensado pro servidor real (Oracle, 1GB total)
+    mem_limit: 200m
+    memswap_limit: 200m
+
+  # Consome as filas de jobs (php artisan queue:work) - mesma imagem do app,
+  # só troca o comando. Escalável: "docker compose up --scale queue-worker=3".
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    command: php artisan queue:work redis --sleep=3 --tries=3 --backoff=10
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      SKIP_MIGRATE: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+      - public_data:/var/www/html/public
+    restart: unless-stopped
+    mem_limit: 100m
+    memswap_limit: 100m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 48mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 64m
+    memswap_limit: 64m
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    # Flags pra caber num orçamento pequeno de RAM (padrão do MySQL 8 usa
+    # bem mais que isso). Ajuste esses valores se notar lentidão real.
+    command:
+      - --innodb-buffer-pool-size=96M
+      - --key-buffer-size=8M
+      - --max-connections=50
+      - --performance-schema=OFF
+      - --table-open-cache=200
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 350m
+    memswap_limit: 350m
+
+volumes:
+  db_data:
+  redis_data:
+  storage_data:
+  public_data:

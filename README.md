@@ -48,6 +48,57 @@ Sistema completo de catálogo de filmes com geração de conteúdo por IA, otimi
 
 ---
 
+## 🐳 Docker (recomendado)
+
+Sobe tudo (app, frontend já buildado, fila de jobs, scheduler e banco) sem
+precisar instalar PHP/Node/MySQL/Python na máquina.
+
+### Desenvolvimento local
+
+```bash
+cp .env.example .env   # já vem pronto pra funcionar sem editar nada
+docker compose up --build
+```
+
+Site em `http://localhost:8000`.
+
+### Produção
+
+```bash
+cp .env.example .env   # editar com os valores reais (chaves de API, APP_URL etc.)
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Zero passo manual: o `.env.example` já vem com `COMPOSE_PROFILES=db`, então o
+próprio banco (MySQL) sobe dentro do Docker junto com o resto — build e já
+está no ar.
+
+**Usando um MySQL externo já existente** (em vez do banco containerizado):
+edite só o `.env`, sem tocar em nenhum arquivo de compose —
+- Apague a linha `COMPOSE_PROFILES=db` (ou deixe vazia) pra não subir o
+  serviço `db`;
+- Aponte `DB_HOST` pro servidor real (`DB_HOST=host.docker.internal` se ele
+  rodar na mesma máquina, fora do Docker) e ajuste `DB_PORT`/`DB_USERNAME`/
+  `DB_PASSWORD`/`DB_DATABASE`.
+
+Serviços: `app` (Apache+PHP), `queue-worker` (`php artisan queue:work`,
+reinicia sozinho), `scheduler` (`php artisan schedule:work`, substitui o
+crontab), `redis` (fila), `db` (opcional, ver acima). Todos com `mem_limit`
+ajustado pra caber num servidor pequeno (testado sob 1GB de RAM total).
+
+### Testes
+
+Banco descartável só pra suíte de testes (Pest), isolado do banco de
+desenvolvimento/produção:
+
+```bash
+docker compose -f docker-compose.testing.yml up -d
+./vendor/bin/pest
+docker compose -f docker-compose.testing.yml down -v   # quando terminar
+```
+
+---
+
 ## 🛠️ Instalação Local
 
 ### 1. Backend (Laravel)
@@ -321,6 +372,43 @@ npm run build
 # Preview da build
 npm run preview
 ```
+
+---
+
+## ✅ Testes
+
+Suíte de testes (Pest, ~150 testes / 90%+ de cobertura de `app/`) cobrindo
+todos os endpoints da API, a rota SPA (`SpaController`, que injeta title/
+canonical/conteúdo por rota — ver seção de SEO), o redirect de `www` pro
+domínio canônico, os comandos artisan (`cache:generate`, `sitemap:generate`,
+`justwatch:backfill`, `trailers:download`, `movies:refresh-existing`, os
+`movies:queue-*`) e os Jobs de fila.
+
+### Pré-requisito: MySQL
+
+A aplicação usa bastante SQL exclusivo do MySQL (FULLTEXT `MATCH...AGAINST`,
+`ORDER BY FIELD()`, colunas geradas, `JSON_TABLE`) — os testes rodam contra
+um MySQL real (não SQLite), igual produção. Banco isolado via Docker (ver
+seção Docker acima), sem precisar instalar MySQL na máquina:
+
+```bash
+# 1. Banco de teste descartável (uma vez, fica no ar até você derrubar)
+docker compose -f docker-compose.testing.yml up -d
+
+# 2. Rodar a suíte
+composer test
+# ou
+./vendor/bin/pest
+# com cobertura (precisa de PCOV ou Xdebug instalado):
+./vendor/bin/pest --coverage
+```
+
+A conexão de teste (`guiadefilmes_test`/`testuser`/`testpass` na porta
+`3307`) já está configurada no `phpunit.xml`. Só 1 teste fica pulado por
+natureza (busca por relevância): o índice FULLTEXT do InnoDB não enxerga
+linhas inseridas e ainda não comitadas na mesma transação, e
+`RefreshDatabase` isola cada teste numa transação que nunca comita —
+documentado no próprio teste.
 
 ---
 

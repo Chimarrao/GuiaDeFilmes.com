@@ -7,12 +7,40 @@
 # (composer.json, artisan, app/, database/, vendor/, .env aqui mesmo). O
 # Apache aponta o DocumentRoot pra public/, onde também fica publicado o
 # build estático do frontend. frontend/ é só o código-fonte do Vue.
+#
+# Modo Docker: se existir um arquivo ".docker-deploy" na raiz (não
+# versionado — ver .gitignore), esse checkout é tratado como gerenciado via
+# Docker Compose e o hook pula toda a lógica "no host" abaixo, delegando
+# pro Docker. O conteúdo do arquivo é o nome do compose file a usar (ex:
+# "docker-compose.prod.yml"); se estiver vazio, usa docker-compose.prod.yml.
 set -e
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 FILES_CHANGED="$(git diff --name-only HEAD@{1} HEAD 2>/dev/null || true)"
+
+if [ -f "$REPO_ROOT/.docker-deploy" ]; then
+  COMPOSE_FILE="$(cat "$REPO_ROOT/.docker-deploy")"
+  COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+
+  echo "==> Modo Docker detectado (.docker-deploy -> $COMPOSE_FILE)."
+  echo "==> Buildando e subindo containers (o cache de camadas do Docker já"
+  echo "    garante que só recompila o que realmente mudou)..."
+  docker compose -f "$COMPOSE_FILE" up -d --build
+
+  echo "==> Rodando migrations dentro do container app..."
+  docker compose -f "$COMPOSE_FILE" exec -T app php artisan migrate --force
+
+  if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
+    echo "==> Mudanças no frontend detectadas — limpando cache de HTML do"
+    echo "    SpaController (senão o build antigo fica servido em cache por até 6h)..."
+    docker compose -f "$COMPOSE_FILE" exec -T app php artisan cache:clear
+  fi
+
+  echo "==> post-merge hook concluído (modo Docker)."
+  exit 0
+fi
 
 if echo "$FILES_CHANGED" | grep -q '^frontend/'; then
   echo "==> Mudanças no frontend detectadas."

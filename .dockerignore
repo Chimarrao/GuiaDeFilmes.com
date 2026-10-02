@@ -1,0 +1,24 @@
+.git
+.github
+node_modules
+frontend/node_modules
+frontend/dist
+# Imagens brutas de origem (~128MB) não referenciadas em nenhum .vue/.js —
+# o build usa só as versões .webp já otimizadas em src/assets/images/*.webp
+frontend/src/assets/images/originais
+vendor
+venv
+public/trailers
+storage/framework/cache/data
+storage/framework/sessions
+storage/framework/views
+storage/logs
+database/*.sqlite
+scripts_tmp
+movies_export_*.csv
+filmes_faltantes_*.csv
+.env
+.env.backup*
+.env.production
+*.log
+.DS_Store

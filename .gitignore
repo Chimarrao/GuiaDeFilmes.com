@@ -2,6 +2,10 @@
 /DEPLOY_CODEBR_SIMPLES.md
 /HTACCESS_ADICIONAR_NO_CODEBR.txt
 
+# Marca local (não versionada) indicando que este checkout é gerenciado via
+# Docker Compose — usada pelo .githooks/post-merge pra decidir o modo de deploy
+/.docker-deploy
+
 # Laravel Backend
 /node_modules
 /public/hot
@@ -13,6 +17,7 @@
 /storage/*.key
 /storage/framework/sessions/*
 !/storage/framework/sessions/.gitignore
+/storage/framework/views/*.php
 /vendor
 /venv
 /.env

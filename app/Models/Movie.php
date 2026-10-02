@@ -44,6 +44,7 @@ class Movie extends Model
         'keywords',
         'similar',
         'justwatch_watch_info',
+        'trivia',
     ];
 
     protected $casts = [
@@ -61,6 +62,7 @@ class Movie extends Model
         'external_ids' => 'array',
         'keywords' => 'array',
         'similar' => 'array',
+        'trivia' => 'array',
         'release_date' => 'date',
     ];
 
@@ -69,7 +71,7 @@ class Movie extends Model
     */
     public function setAttribute($key, $value)
     {
-        if (in_array($key, ['genres', 'cast', 'crew', 'videos', 'images', 'production_companies', 'production_countries', 'where_to_watch', 'alternative_titles', 'external_ids', 'keywords', 'similar'])) {
+        if (in_array($key, ['genres', 'cast', 'crew', 'videos', 'images', 'production_companies', 'production_countries', 'where_to_watch', 'alternative_titles', 'external_ids', 'keywords', 'similar', 'trivia'])) {
             $this->attributes[$key] = is_array($value) 
                 ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) 
                 : $value;

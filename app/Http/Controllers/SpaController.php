@@ -85,6 +85,10 @@ class SpaController extends Controller
                 'ogDescription' => "Descubra os filmes mais populares do gênero {$name}.",
                 'canonical' => $canonical,
                 'content' => "<h1>Filmes de {$name}</h1><p>Descubra os filmes mais populares do gênero {$name} no Guia de Filmes.</p>",
+                'jsonLd' => [$this->breadcrumbs([
+                    ['name' => 'Explorar', 'path' => '/explorar'],
+                    ['name' => $name, 'path' => $canonicalPath],
+                ])],
             ]);
         }
 
@@ -98,6 +102,10 @@ class SpaController extends Controller
                 'ogDescription' => "Descubra filmes dos {$label}.",
                 'canonical' => $canonical,
                 'content' => "<h1>Filmes dos {$label}</h1><p>Descubra os melhores filmes dos {$label} no Guia de Filmes.</p>",
+                'jsonLd' => [$this->breadcrumbs([
+                    ['name' => 'Explorar', 'path' => '/explorar'],
+                    ['name' => $label, 'path' => $canonicalPath],
+                ])],
             ]);
         }
 
@@ -111,6 +119,10 @@ class SpaController extends Controller
                 'ogDescription' => "Descubra os melhores filmes de {$name}.",
                 'canonical' => $canonical,
                 'content' => "<h1>Filmes de {$name}</h1><p>Descubra os melhores filmes de {$name} no Guia de Filmes.</p>",
+                'jsonLd' => [$this->breadcrumbs([
+                    ['name' => 'Explorar', 'path' => '/explorar'],
+                    ['name' => $name, 'path' => $canonicalPath],
+                ])],
             ]);
         }
 
@@ -138,10 +150,18 @@ class SpaController extends Controller
             ],
             '/sobre' => [
                 'title' => 'Sobre - Guia de Filmes',
-                'description' => 'Conheça o Guia de Filmes, sua plataforma completa para descobrir filmes, ver onde assistir e ficar por dentro das estreias.',
+                'description' => 'Conheça o Guia de Filmes, quem mantém o site, de onde vêm os dados e como entrar em contato.',
                 'ogTitle' => 'Sobre o Guia de Filmes',
                 'ogDescription' => 'Plataforma moderna para descoberta e exploração de filmes com informações sobre onde assistir',
-                'content' => '<h1>Sobre o Guia de Filmes</h1><p>Conheça o Guia de Filmes, sua plataforma completa para descobrir filmes, ver onde assistir e ficar por dentro das estreias.</p>',
+                'content' => '<h1>Sobre o Guia de Filmes</h1>'
+                    . '<p>O Guia de Filmes é um catálogo de cinema independente, criado e mantido de forma '
+                    . 'independente. O objetivo é reunir, num só lugar, informações de filmes (sinopse, elenco, '
+                    . 'nota, onde assistir) de forma rápida e sem anúncios invasivos.</p>'
+                    . '<p>De onde vêm os dados: as informações de filmes (sinopse, elenco, pôsteres, notas) são '
+                    . 'fornecidas pela API do TMDB (The Movie Database); os dados de onde assistir (streaming) vêm '
+                    . 'do JustWatch. O Guia de Filmes não é afiliado a nenhuma das duas plataformas.</p>',
+                // TODO: adicionar um e-mail/canal de contato público aqui — de
+                // propósito deixei sem e-mail pessoal, isso é uma decisão sua.
             ],
             '/buscar' => [
                 'title' => 'Buscar Filmes - Guia de Filmes',
@@ -179,7 +199,7 @@ class SpaController extends Controller
         $genres = is_array($movie->genres) ? $movie->genres : [];
         $releaseDateFormatted = $movie->release_date ? $movie->release_date->format('d/m/Y') : '-';
 
-        $jsonLd = [
+        $movieJsonLd = [
             '@context' => 'https://schema.org',
             '@type' => 'Movie',
             'name' => $movie->title,
@@ -195,7 +215,7 @@ class SpaController extends Controller
             // schema.org (1-5) e marca qualquer nota 0-10 como "fora do
             // intervalo" (confirmado via Search Console: "A classificação
             // está fora do intervalo padrão ou especificado").
-            $jsonLd['aggregateRating'] = [
+            $movieJsonLd['aggregateRating'] = [
                 '@type' => 'AggregateRating',
                 'ratingValue' => $movie->tmdb_rating,
                 'ratingCount' => $movie->tmdb_vote_count,
@@ -203,6 +223,21 @@ class SpaController extends Controller
                 'worstRating' => 0,
             ];
         }
+
+        $breadcrumbTrail = [];
+        if (!empty($genres)) {
+            $firstGenreSlug = $this->genreNameToSlug($genres[0]);
+            if ($firstGenreSlug) {
+                $breadcrumbTrail[] = ['name' => $genres[0], 'path' => '/explorar/genero/' . $firstGenreSlug];
+            }
+        }
+        $breadcrumbTrail[] = ['name' => $movie->title, 'path' => '/filme/' . $movie->slug];
+
+        $jsonLdBlocks = array_values(array_filter([
+            $movieJsonLd,
+            $this->breadcrumbs($breadcrumbTrail),
+            $this->movieFaq($movie),
+        ]));
 
         return [
             'title' => "{$movie->title} ({$year}) - Data de Lançamento, Elenco e Trailer | Guia de Filmes",
@@ -213,8 +248,150 @@ class SpaController extends Controller
             'ogImage' => $poster,
             'canonical' => self::BASE_URL . '/filme/' . $movie->slug,
             'content' => $this->movieContentHtml($movie, $year, $synopsis, $poster, $genres, $releaseDateFormatted),
-            'jsonLd' => $jsonLd,
+            'jsonLd' => $jsonLdBlocks,
         ];
+    }
+
+    /**
+     * Converte o nome de um gênero (como salvo no filme, ex: "Ação") pro
+     * slug correspondente do enum (ex: "acao"), pra montar o link do
+     * breadcrumb. Devolve null se não encontrar correspondência exata.
+     */
+    private function genreNameToSlug(string $genreName): ?string
+    {
+        foreach (GenreSlug::cases() as $case) {
+            if (mb_strtolower($case->label()) === mb_strtolower($genreName)) {
+                return $case->value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Monta o schema.org BreadcrumbList a partir de uma trilha de
+     * [name, path] (sempre prefixada por "Início"). Path relativo,
+     * resolvido aqui pra URL absoluta.
+     */
+    private function breadcrumbs(array $trail): array
+    {
+        $items = [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => 'Início', 'item' => self::BASE_URL . '/'],
+        ];
+
+        $position = 2;
+        foreach ($trail as $step) {
+            $items[] = [
+                '@type' => 'ListItem',
+                'position' => $position,
+                'name' => $step['name'],
+                'item' => self::BASE_URL . $step['path'],
+            ];
+            $position++;
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
+    }
+
+    /**
+     * Gera um FAQPage schema.org com 2-4 perguntas a partir de dados que já
+     * existem no filme (nunca inventa resposta sem dado real por trás — uma
+     * pergunta só entra se tiver dado pra responder). Mesmas perguntas
+     * aparecem como accordion visual na MovieDetail.vue.
+     */
+    private function movieFaq(Movie $movie): ?array
+    {
+        $questions = [];
+
+        $platforms = $this->wherToWatchPlatformNames($movie);
+        if (!empty($platforms)) {
+            $questions[] = [
+                '@type' => 'Question',
+                'name' => "Onde assistir {$movie->title}?",
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => "{$movie->title} está disponível em: " . implode(', ', $platforms) . '.',
+                ],
+            ];
+        }
+
+        if ($movie->runtime > 0) {
+            $hours = intdiv($movie->runtime, 60);
+            $minutes = $movie->runtime % 60;
+            $durationText = $hours > 0
+                ? "{$hours}h" . ($minutes > 0 ? "{$minutes}min" : '')
+                : "{$minutes} minutos";
+            $questions[] = [
+                '@type' => 'Question',
+                'name' => "Qual a duração de {$movie->title}?",
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => "{$movie->title} tem {$movie->runtime} minutos de duração ({$durationText}).",
+                ],
+            ];
+        }
+
+        if ($movie->release_date) {
+            $isFuture = $movie->release_date->isFuture();
+            $dateText = $movie->release_date->format('d/m/Y');
+            $questions[] = [
+                '@type' => 'Question',
+                'name' => $isFuture ? "Quando {$movie->title} estreia?" : "Quando {$movie->title} foi lançado?",
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => $isFuture
+                        ? "{$movie->title} tem estreia prevista para {$dateText}."
+                        : "{$movie->title} foi lançado em {$dateText}.",
+                ],
+            ];
+        }
+
+        if ($movie->tmdb_vote_count > 0) {
+            $questions[] = [
+                '@type' => 'Question',
+                'name' => "Qual a nota de {$movie->title}?",
+                'acceptedAnswer' => [
+                    '@type' => 'Answer',
+                    'text' => "{$movie->title} tem nota " . number_format((float) $movie->tmdb_rating, 1)
+                        . "/10 no TMDB, baseada em " . number_format($movie->tmdb_vote_count, 0, ',', '.') . ' avaliações.',
+                ],
+            ];
+        }
+
+        if (empty($questions)) {
+            return null;
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            'mainEntity' => $questions,
+        ];
+    }
+
+    /**
+     * Nomes únicos de plataforma a partir de where_to_watch (dados limpos
+     * do TMDB, ex: "Looke", "HBO Max") — não justwatch_watch_info, que tem
+     * um bug histórico de dados antigos salvos como "Unknown" (corrigido
+     * no script pra filmes novos, mas nunca reprocessado em massa pros
+     * registros antigos).
+     */
+    private function wherToWatchPlatformNames(Movie $movie): array
+    {
+        $whereToWatch = is_array($movie->where_to_watch) ? $movie->where_to_watch : [];
+
+        $names = collect($whereToWatch)
+            ->pluck('name')
+            ->filter(fn ($name) => !empty($name) && $name !== 'Unknown')
+            ->unique()
+            ->values()
+            ->all();
+
+        return array_slice($names, 0, 8);
     }
 
     private function movieContentHtml(Movie $movie, string $year, string $synopsis, string $poster, array $genres, string $releaseDateFormatted): string
@@ -235,6 +412,19 @@ class SpaController extends Controller
 
         if (!empty($genres)) {
             $parts[] = '<p>Gêneros: ' . e(implode(', ', $genres)) . '</p>';
+        }
+
+        $platforms = $this->wherToWatchPlatformNames($movie);
+        if (!empty($platforms)) {
+            $parts[] = '<p>Onde assistir: ' . e(implode(', ', $platforms)) . '</p>';
+        }
+
+        if (!empty($movie->trivia) && is_array($movie->trivia)) {
+            $parts[] = '<h2>Curiosidades</h2><ul>';
+            foreach ($movie->trivia as $fact) {
+                $parts[] = '<li>' . e($fact) . '</li>';
+            }
+            $parts[] = '</ul>';
         }
 
         return implode('', $parts);

@@ -60,6 +60,20 @@
                 </router-link>
               </div>
 
+              <!-- Destaque rápido de onde assistir, logo abaixo dos gêneros
+                   (a lista completa continua mais abaixo, igual antes) -->
+              <div v-if="hasJustWatchData() && flatratePlatforms.length > 0" class="where-to-watch-teaser mb-4">
+                <span class="has-text-white-ter mr-2">
+                  <i class="fas fa-tv mr-1"></i>Assista em:
+                </span>
+                <a v-for="(platform, index) in flatratePlatforms.slice(0, 4)" :key="`teaser-${index}`"
+                  :href="platform.url" target="_blank" class="tag is-medium"
+                  style="background-color: var(--background-card); color: #fff; text-decoration: none; margin-right: 6px;">
+                  {{ platform.platform }}
+                </a>
+                <a href="#onde-assistir" class="has-text-danger" style="text-decoration: underline;">ver todas as opções</a>
+              </div>
+
               <div v-if="movie.tagline" class="mb-4">
                 <p class="has-text-white-ter is-size-5 is-italic">"{{ movie.tagline }}"</p>
               </div>
@@ -99,7 +113,7 @@
           </div>
 
           <!-- SEO: Where to Watch Block -->
-          <div class="box seo-box mb-5" style="background-color: var(--background-card);">
+          <div id="onde-assistir" class="box seo-box mb-5" style="background-color: var(--background-card);">
             <h2 class="title is-3 has-text-white mb-4">
               <span class="icon-text">
                 <span class="icon has-text-danger">
@@ -508,6 +522,47 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Curiosidades (trivia) -->
+          <div v-if="movie.trivia && movie.trivia.length" class="mb-6">
+            <div class="box" style="background-color: var(--background-card);">
+              <h3 class="title is-3 has-text-white mb-4">
+                <span class="icon-text">
+                  <span class="icon has-text-danger">
+                    <i class="fas fa-lightbulb"></i>
+                  </span>
+                  <span>Curiosidades</span>
+                </span>
+              </h3>
+              <ul class="content has-text-white-ter is-size-5">
+                <li v-for="(fact, index) in movie.trivia" :key="`trivia-${index}`">{{ fact }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- FAQ: mesmas perguntas do schema FAQPage injetado no SSR,
+               pra manter o conteúdo visível consistente com o que o Google indexa -->
+          <div v-if="faqItems.length" class="mb-6">
+            <div class="box" style="background-color: var(--background-card);">
+              <h3 class="title is-3 has-text-white mb-4">
+                <span class="icon-text">
+                  <span class="icon has-text-danger">
+                    <i class="fas fa-question-circle"></i>
+                  </span>
+                  <span>Perguntas Frequentes</span>
+                </span>
+              </h3>
+              <div v-for="(faq, index) in faqItems" :key="`faq-${index}`" class="faq-item">
+                <button type="button" class="faq-question" @click="toggleFaq(index)" :aria-expanded="openFaqIndex === index">
+                  <span>{{ faq.question }}</span>
+                  <i class="fas" :class="openFaqIndex === index ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                </button>
+                <div v-show="openFaqIndex === index" class="faq-answer has-text-white-ter">
+                  {{ faq.answer }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1523,6 +1578,64 @@ export default {
       }
     }
 
+    // Mesmas 4 perguntas (condicionais a ter dado real) do FAQPage schema
+    // gerado no SSR (SpaController::movieFaq) — texto pode variar levemente,
+    // mas o conjunto de perguntas é o mesmo.
+    const faqItems = computed(() => {
+      const m = movie.value
+      if (!m) return []
+
+      const items = []
+
+      const platformNames = [...new Set([
+        ...flatratePlatforms.value.map(p => p.platform),
+        ...rentPlatforms.value.map(p => p.platform),
+        ...buyPlatforms.value.map(p => p.platform)
+      ])].filter(name => name && name !== 'Unknown')
+
+      if (platformNames.length) {
+        items.push({
+          question: `Onde assistir ${m.title}?`,
+          answer: `${m.title} está disponível em: ${platformNames.slice(0, 8).join(', ')}.`
+        })
+      }
+
+      if (m.runtime > 0) {
+        const hours = Math.floor(m.runtime / 60)
+        const minutes = m.runtime % 60
+        const durationText = hours > 0 ? `${hours}h${minutes > 0 ? minutes + 'min' : ''}` : `${minutes} minutos`
+        items.push({
+          question: `Qual a duração de ${m.title}?`,
+          answer: `${m.title} tem ${m.runtime} minutos de duração (${durationText}).`
+        })
+      }
+
+      if (m.release_date) {
+        const isFuture = new Date(m.release_date) > new Date()
+        const dateText = formatDate(m.release_date)
+        items.push({
+          question: isFuture ? `Quando ${m.title} estreia?` : `Quando ${m.title} foi lançado?`,
+          answer: isFuture
+            ? `${m.title} tem estreia prevista para ${dateText}.`
+            : `${m.title} foi lançado em ${dateText}.`
+        })
+      }
+
+      if (Number(m.tmdb_vote_count) > 0) {
+        items.push({
+          question: `Qual a nota de ${m.title}?`,
+          answer: `${m.title} tem nota ${m.tmdb_rating}/10 no TMDB, baseada em ${formatNumber(m.tmdb_vote_count)} avaliações.`
+        })
+      }
+
+      return items
+    })
+
+    const openFaqIndex = ref(null)
+    const toggleFaq = (index) => {
+      openFaqIndex.value = openFaqIndex.value === index ? null : index
+    }
+
     onMounted(() => {
       loadMovie()
     })
@@ -1587,7 +1700,10 @@ export default {
       openVideo,
       openLightbox,
       closeLightbox,
-      goBack
+      goBack,
+      faqItems,
+      openFaqIndex,
+      toggleFaq
     }
   }
 }
@@ -1828,6 +1944,41 @@ export default {
 
 .seo-box {
   border-left: 4px solid var(--primary-color);
+}
+
+/* FAQ Accordion */
+.faq-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.faq-question i {
+  color: var(--primary-color);
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.faq-answer {
+  padding: 0 0 1rem 0;
+  line-height: 1.6;
 }
 
 /* Platform Grid - Layout limpo e organizado */

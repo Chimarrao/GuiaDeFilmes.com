@@ -36,6 +36,12 @@ return new class extends Migration
             return;
         }
 
+        $output = new \Symfony\Component\Console\Output\ConsoleOutput();
+        $bar = new \Symfony\Component\Console\Helper\ProgressBar($output, count($trivia));
+        $bar->setFormat('  %current%/%max% [%bar%] %percent:3s%% -- %message%');
+        $bar->setMessage('iniciando...');
+        $bar->start();
+
         $updated = 0;
 
         foreach ($trivia as $tmdbId => $facts) {
@@ -44,8 +50,16 @@ return new class extends Migration
             if ($movie) {
                 $movie->update(['trivia' => $facts]);
                 $updated++;
+                $bar->setMessage("tmdb_id {$tmdbId} ({$movie->title})");
+            } else {
+                $bar->setMessage("tmdb_id {$tmdbId} (não encontrado)");
             }
+
+            $bar->advance();
         }
+
+        $bar->finish();
+        $output->writeln('');
 
         \Illuminate\Support\Facades\Log::info("seed_trivia_for_popular_movies: {$updated}/" . count($trivia) . ' filmes atualizados.');
     }

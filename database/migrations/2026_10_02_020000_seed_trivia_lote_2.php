@@ -22,9 +22,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!app()->environment('production')) {
-            return;
-        }
 
         $path = database_path('data/movie_trivia_lote_2.json');
 

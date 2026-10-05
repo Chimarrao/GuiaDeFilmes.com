@@ -24,6 +24,32 @@ Se não tiver confiança sobre um filme específico (pouco conhecido, poucos
 dados na memória), **pule esse filme** e segue pro próximo da lista — não
 force 2 fatos fracos/genéricos só pra bater a meta.
 
+### Teste pra saber se é curiosidade de verdade ou sinopse disfarçada
+
+Um lote inteiro (lote 6) já foi **rejeitado e apagado** por isso: ao não
+reconhecer os filmes da lista de candidatos, o gerador escreveu frases que
+PARECEM fato mas são só descrição de gênero/tema reformulada — nenhuma é
+verificável, nenhuma é específica daquele filme.
+
+❌ Exemplo real rejeitado (filme: "Pai do Ano"):
+> "O filme é uma comédia que desafia estereótipos de paternidade moderna."
+
+Isso serve pra qualquer comédia familiar sobre pais — não é uma curiosidade,
+é uma sinopse genérica inventada a partir do título/gênero. **Se a frase
+ainda faz sentido trocando o nome do filme por outro do mesmo gênero, não é
+uma curiosidade válida.**
+
+✅ Exemplo real aceito (filme: Interestelar):
+> "O físico Kip Thorne (Nobel de 2017) atuou como consultor científico e
+> ajudou a desenhar visualmente o buraco negro Gárgantua."
+
+Isso é específico, nomeável, checável — só é verdade pra esse filme exato.
+
+**Regra prática**: se o filme é obscuro o suficiente pra você não lembrar de
+nenhum fato de bastidor/elenco/prêmio/bilheteria específico dele, a resposta
+certa é PULAR, nunca é "inventar uma sinopse com cara de fato". Prefira um
+lote pequeno e 100% verdadeiro a um lote grande com fatos genéricos.
+
 ## Passo a passo
 
 1. **Descobrir quem já foi coberto**: listar todas as chaves (tmdb_id) de
@@ -54,10 +80,26 @@ force 2 fatos fracos/genéricos só pra bater a meta.
    já existem — o primeiro lote histórico é só `movie_trivia.json`, sem
    número, os seguintes são `_lote_2`, `_lote_3`, etc.).
 
-5. **Criar a migration**: copiar o padrão de
+5. **Confirmar que o filme existe no catálogo antes de incluir na migration**:
+   um filme pode ter curiosidade escrita mas ainda não estar na base do site
+   (catálogo real, via produção). Antes de colocar um `tmdb_id` na migration
+   de seed, confirme que ele existe de verdade (`GET
+   https://guiadefilmes.com/api/movies/search?q=<título>`, comparando
+   `tmdb_id` do resultado). Se não existir:
+   - mande ele pro n8n (`POST
+     http://163.176.145.249:5678/webhook/buscar-filme?query=<título>`, um a
+     um, não em lote — esse workflow importa o filme pro catálogo. Timeout
+     real de até 10min por chamada, então isso é lento de propósito);
+   - confirme de novo via `/api/movies/search` que ele realmente gravou;
+   - só inclua na migration os que confirmaram presença (antes ou depois do
+     n8n). Filme que não existe e que o n8n não conseguiu importar fica de
+     fora dessa leva — não vira linha morta na migration.
+
+6. **Criar a migration**: copiar o padrão de
    `database/migrations/2026_10_02_010100_seed_trivia_for_popular_movies.php`
-   (guard de produção `app()->environment('production')`, leitura do JSON,
-   `Movie::where('tmdb_id', ...)->first()?->update(['trivia' => $facts])`,
+   (leitura do JSON, sem guard de ambiente — roda em qualquer ambiente, não
+   só produção —, `Movie::where('tmdb_id', ...)->first()?->update(['trivia'
+   => $facts])`,
    **sempre com a barra de progresso** via
    `Symfony\Component\Console\Helper\ProgressBar` — é o padrão fixado
    depois que uma migration sem barra pareceu travada e foi interrompida
@@ -88,3 +130,26 @@ o registro correspondente na tabela `migrations` (porque DDL no MySQL
 não é transacional, comita na hora, mesmo que o restante do script seja
 interrompido depois). Por isso a barra de progresso não é cosmética, é
 pra evitar esse exato problema de novo.
+
+Um agente rodando essa skill com modelo **Haiku** (barato) já produziu, em
+duas tentativas seguidas, lotes inaceitáveis: uma vez sinopse genérica
+disfarçada de fato (~60% do lote), e outra vez **tmdb_ids inventados de
+memória** pra filmes famosos (ex: achou que 43075 era Matrix — na
+verdade é um filme completamente diferente, sem nenhuma relação).
+Isso teria sobrescrito a curiosidade de filmes aleatórios do catálogo
+com texto sobre filmes errados, um problema de integridade de dado, não
+só de qualidade de texto.
+
+Refeito com **Sonnet** e instrução explícita de nunca escrever um
+tmdb_id de memória (só copiar o valor exato retornado por uma chamada
+de API real), o resultado saiu correto de primeira — 8/8 ids
+conferidos bateram, todos os fatos específicos e verificáveis.
+
+**Conclusão prática**: pra geração de conteúdo (escolher qual fato
+escrever) o Haiku costuma ir bem quando o filme já é muito famoso e a
+regra de "pular se não tiver certeza" é seguida à risca. Mas pra
+qualquer etapa que envolve **recuperar/confirmar um identificador**
+(tmdb_id) — onde um erro silencioso corrompe dado de um filme
+errado — prefira Sonnet, ou pelo menos audite 100% dos tmdb_ids contra
+a API real antes de aceitar um lote gerado por Haiku (nunca aceite o
+relatório do agente sem essa conferência independente).

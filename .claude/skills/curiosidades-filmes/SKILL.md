@@ -6,10 +6,17 @@ description: Gera um novo lote de curiosidades (trivia) verificáveis, escritas 
 # Curiosidades por filme (trivia)
 
 Gera o próximo lote de curiosidades pra filmes do catálogo que ainda não
-foram cobertos, na ordem de `tmdb_vote_count` (proxy de "mais conhecidos",
-já que o projeto não rastreia pageview por filme).
+foram cobertos. Não tem teto fixo de quantidade — a meta é cobrir o máximo
+possível do catálogo, continuando lote após lote até genuinamente esgotar
+candidatos em quem você tem confiança real (não até bater um número). Varie
+a fonte de candidatos quando uma esgotar (`tmdb_vote_count`, depois nota,
+depois filmografia de diretores específicos, franquias, cinema por país,
+Oscar por década, etc. — ver seção de estratégias mais abaixo) em vez de
+parar só porque uma fonte específica secou.
 
-Tamanho do lote: pega de `args` se informado (ex: "500"), senão usa 1000.
+Tamanho do lote: sem limite fixo — gere quantos lotes numerados (lote_8,
+lote_9...) sua confiança permitir numa mesma sessão, cada um como arquivo
+separado, validando localmente antes de passar pro próximo.
 
 ## Regra inegociável
 
